@@ -26,6 +26,7 @@ export default function RootLayout() {
         <Stack.Screen name="patient-detail" options={{ title: "" }} />
         <Stack.Screen name="import-patients" options={{ title: "" }} />
         <Stack.Screen name="day-detail" options={{ title: "" }} />
+        <Stack.Screen name="all-patients" options={{ title: "" }} />
       </Stack>
       <Toast />
     </Provider>

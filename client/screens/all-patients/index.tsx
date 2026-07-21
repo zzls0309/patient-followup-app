@@ -5,6 +5,7 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  TextInput,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
@@ -14,7 +15,6 @@ import { Screen } from '@/components/Screen';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getNotificationsEnabled, shouldShowReminder, markTodayChecked } from '@/utils/notifications';
 
 const API_BASE = `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1`;
 
@@ -48,12 +48,11 @@ function getStatusInfo(daysUntil: number | null) {
   return { label: `${daysUntil}天后`, color: '#059669', bg: '#E8F5E9' };
 }
 
-export default function PatientsScreen() {
+export default function AllPatientsScreen() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [reminderCount, setReminderCount] = useState(0);
-  const [showReminder, setShowReminder] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const router = useSafeRouter();
   const insets = useSafeAreaInsets();
 
@@ -70,46 +69,22 @@ export default function PatientsScreen() {
     }
   }, []);
 
-  const checkReminders = useCallback(async () => {
-    const enabled = await getNotificationsEnabled();
-    if (!enabled) return;
-
-    const shouldShow = await shouldShowReminder();
-    if (!shouldShow) return;
-
-    try {
-      const response = await fetch(`${API_BASE}/patients/reminders/upcoming`);
-      const data = await response.json();
-      if (data.length > 0) {
-        setReminderCount(data.length);
-        setShowReminder(true);
-        await markTodayChecked();
-      }
-    } catch (err) {
-      console.error('Failed to check reminders:', err);
-    }
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
       fetchPatients();
-      checkReminders();
-    }, [fetchPatients, checkReminders])
+    }, [fetchPatients])
   );
 
-  // Filter patients with visits in the next 7 days (including overdue)
-  const upcomingPatients = useMemo(() => {
-    return patients.filter((p) => {
-      const days = getDaysUntil(p.next_step_date);
-      if (days === null) return false;
-      return days <= 7; // Include overdue (negative) and next 7 days
-    }).sort((a, b) => {
-      // Sort by days until: overdue first, then today, then upcoming
-      const daysA = getDaysUntil(a.next_step_date) ?? 999;
-      const daysB = getDaysUntil(b.next_step_date) ?? 999;
-      return daysA - daysB;
-    });
-  }, [patients]);
+  const filteredPatients = useMemo(() => {
+    if (!searchQuery.trim()) return patients;
+    const query = searchQuery.toLowerCase().trim();
+    return patients.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query) ||
+        p.phone.includes(query) ||
+        p.notes.toLowerCase().includes(query)
+    );
+  }, [patients, searchQuery]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -209,60 +184,47 @@ export default function PatientsScreen() {
         style={[styles.headerGradient, { paddingTop: insets.top + 16 }]}
       >
         <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.headerTitle}>本周随诊</Text>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <FontAwesome6 name="chevron-left" size={18} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleSection}>
+            <Text style={styles.headerTitle}>全部患者</Text>
             <Text style={styles.headerSubtitle}>
-              {upcomingPatients.length} 位患者待随诊
+              共 {patients.length} 位患者
             </Text>
           </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.headerBtn}
-              onPress={() => router.push('/import-patients')}
-            >
-              <FontAwesome6 name="file-import" size={18} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.headerBtn, styles.headerBtnPrimary]}
-              onPress={() => router.push('/add-patient')}
-            >
-              <FontAwesome6 name="plus" size={18} color="#059669" />
-            </TouchableOpacity>
+          <View style={{ width: 36 }} />
+        </View>
+
+        {/* Search bar */}
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputContainer}>
+            <FontAwesome6 name="magnifying-glass" size={14} color="#94A3B8" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="搜索姓名、电话或备注"
+              placeholderTextColor="#94A3B8"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <FontAwesome6 name="xmark" size={14} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </LinearGradient>
 
-      {showReminder && reminderCount > 0 && (
-        <TouchableOpacity
-          style={styles.reminderBanner}
-          activeOpacity={0.8}
-          onPress={() => {
-            setShowReminder(false);
-            router.navigate('/(tabs)/reminders');
-          }}
-        >
-          <View style={styles.reminderBannerLeft}>
-            <View style={styles.reminderBannerIcon}>
-              <FontAwesome6 name="bell" size={16} color="#D97706" />
-            </View>
-            <Text style={styles.reminderBannerText}>
-              {reminderCount} 个随诊提醒待处理
-            </Text>
-          </View>
-          <View style={styles.reminderBannerRight}>
-            <Text style={styles.reminderBannerAction}>查看</Text>
-            <FontAwesome6 name="chevron-right" size={12} color="#D97706" />
-          </View>
-        </TouchableOpacity>
-      )}
-
       <FlatList
-        data={upcomingPatients}
+        data={filteredPatients}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPatientCard}
         contentContainerStyle={[
           styles.listContent,
-          upcomingPatients.length === 0 && styles.emptyContainer,
+          filteredPatients.length === 0 && styles.emptyContainer,
         ]}
         refreshControl={
           <RefreshControl
@@ -274,25 +236,13 @@ export default function PatientsScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
-              <FontAwesome6 name="calendar-check" size={36} color="#059669" />
+              <FontAwesome6 name="search" size={36} color="#94A3B8" />
             </View>
-            <Text style={styles.emptyTitle}>本周暂无随诊</Text>
-            <Text style={styles.emptyDesc}>点击下方按钮查看全部患者</Text>
+            <Text style={styles.emptyTitle}>未找到匹配的患者</Text>
+            <Text style={styles.emptyDesc}>请尝试其他搜索关键词</Text>
           </View>
         }
       />
-
-      {/* Fixed bottom button */}
-      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-        <TouchableOpacity
-          style={styles.allPatientsBtn}
-          onPress={() => router.push('/all-patients')}
-        >
-          <FontAwesome6 name="users" size={18} color="#059669" />
-          <Text style={styles.allPatientsBtnText}>全部患者</Text>
-          <Text style={styles.allPatientsCount}>({patients.length})</Text>
-        </TouchableOpacity>
-      </View>
     </Screen>
   );
 }
@@ -311,26 +261,10 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 12,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  headerBtn: {
+  backBtn: {
     width: 36,
     height: 36,
     borderRadius: 12,
@@ -338,13 +272,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerBtnPrimary: {
-    backgroundColor: '#FFFFFF',
+  headerTitleSection: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  searchContainer: {
+    marginTop: 4,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1E293B',
+    padding: 0,
   },
   listContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
   emptyContainer: {
     flex: 1,
@@ -470,7 +433,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 24,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -484,82 +447,5 @@ const styles = StyleSheet.create({
   emptyDesc: {
     fontSize: 13,
     color: '#94A3B8',
-  },
-  reminderBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FEF3C7',
-    marginHorizontal: 16,
-    marginTop: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(217,119,6,0.15)',
-  },
-  reminderBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  reminderBannerIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: 'rgba(217,119,6,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  reminderBannerText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#92400E',
-  },
-  reminderBannerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  reminderBannerAction: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#D97706',
-  },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    backgroundColor: '#F8FAFC',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(5,150,105,0.08)',
-  },
-  allPatientsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(5,150,105,0.15)',
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-  },
-  allPatientsBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#059669',
-    marginLeft: 8,
-  },
-  allPatientsCount: {
-    fontSize: 13,
-    color: '#64748B',
-    marginLeft: 4,
   },
 });
