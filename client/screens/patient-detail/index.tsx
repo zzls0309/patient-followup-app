@@ -173,23 +173,24 @@ function DatePickerModal({
   onCancel: () => void;
 }) {
   const ITEM_HEIGHT = 44;
-  const today = new Date();
+  const getToday = () => new Date();
 
-  const [year, setYear] = useState(today.getFullYear());
-  const [month, setMonth] = useState(today.getMonth() + 1);
-  const [day, setDay] = useState(today.getDate());
+  const [year, setYear] = useState(() => getToday().getFullYear());
+  const [month, setMonth] = useState(() => getToday().getMonth() + 1);
+  const [day, setDay] = useState(() => getToday().getDate());
 
+  // 每次弹窗打开时，重新获取当前日期
   useEffect(() => {
-    if (visible && initialDate) {
-      const d = new Date(initialDate + 'T00:00:00');
-      setYear(d.getFullYear());
-      setMonth(d.getMonth() + 1);
-      setDay(d.getDate());
+    if (visible) {
+      const now = getToday();
+      setYear(now.getFullYear());
+      setMonth(now.getMonth() + 1);
+      setDay(now.getDate());
     }
-  }, [visible, initialDate]);
+  }, [visible]);
 
   const daysInMonth = new Date(year, month, 0).getDate();
-  const years = Array.from({ length: 10 }, (_, i) => today.getFullYear() - 2 + i);
+  const years = Array.from({ length: 10 }, (_, i) => getToday().getFullYear() - 2 + i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
