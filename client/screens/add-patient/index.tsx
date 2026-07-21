@@ -210,10 +210,10 @@ export default function AddPatientScreen() {
 
 const styles = StyleSheet.create({
   headerGradient: {
-    paddingBottom: 20,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    paddingBottom: 14,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerRow: {
     flexDirection: 'row',
@@ -221,9 +221,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.20)',
     justifyContent: 'center',
     alignItems: 'center',
