@@ -67,12 +67,16 @@ function ScrollColumn({
 }) {
   const scrollViewRef = useRef<ScrollView>(null);
   const [scrollY, setScrollY] = useState(selectedIndex * itemHeight);
-  const isScrollingRef = useRef(false);
+  const isUserScrollingRef = useRef(false);
+  const lastSelectedRef = useRef(selectedIndex);
 
+  // 只在外部重置 selectedIndex 时（非用户滚动引起）才滚动
   useEffect(() => {
-    if (!isScrollingRef.current) {
+    if (selectedIndex !== lastSelectedRef.current && !isUserScrollingRef.current) {
       scrollViewRef.current?.scrollTo({ y: selectedIndex * itemHeight, animated: false });
+      setScrollY(selectedIndex * itemHeight);
     }
+    lastSelectedRef.current = selectedIndex;
   }, [selectedIndex, itemHeight]);
 
   const handleScroll = (event: any) => {
@@ -81,19 +85,23 @@ function ScrollColumn({
   };
 
   const handleMomentumScrollEnd = (event: any) => {
-    isScrollingRef.current = false;
     const offsetY = event.nativeEvent.contentOffset.y;
     const index = Math.round(offsetY / itemHeight);
     const clampedIndex = Math.max(0, Math.min(index, items.length - 1));
     const snappedY = clampedIndex * itemHeight;
     setScrollY(snappedY);
+    isUserScrollingRef.current = true;
     onSelect(items[clampedIndex]);
-    // 确保精确对齐
+    // 精确对齐到整数位置
     scrollViewRef.current?.scrollTo({ y: snappedY, animated: true });
+    // 短暂延迟后重置标志，防止 useEffect 干扰
+    setTimeout(() => {
+      isUserScrollingRef.current = false;
+    }, 100);
   };
 
   const handleScrollBeginDrag = () => {
-    isScrollingRef.current = true;
+    isUserScrollingRef.current = true;
   };
 
   const visibleHeight = itemHeight * 5;
