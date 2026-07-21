@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
@@ -52,10 +53,232 @@ function getDaysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+// 滚动列组件
+function ScrollColumn({
+  items,
+  selectedIndex,
+  onSelect,
+  itemHeight,
+}: {
+  items: number[];
+  selectedIndex: number;
+  onSelect: (value: number) => void;
+  itemHeight: number;
+}) {
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    scrollViewRef.current?.scrollTo({ y: selectedIndex * itemHeight, animated: false });
+  }, []);
+
+  const handleMomentumScrollEnd = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const index = Math.round(offsetY / itemHeight);
+    const clampedIndex = Math.max(0, Math.min(index, items.length - 1));
+    setScrollY(clampedIndex * itemHeight);
+    onSelect(items[clampedIndex]);
+  };
+
+  return (
+    <ScrollView
+      ref={scrollViewRef}
+      style={{ height: itemHeight * 5, width: '100%' }}
+      contentContainerStyle={{ paddingVertical: itemHeight * 2 }}
+      showsVerticalScrollIndicator={false}
+      snapToInterval={itemHeight}
+      snapToAlignment="center"
+      decelerationRate="fast"
+      onMomentumScrollEnd={handleMomentumScrollEnd}
+    >
+      {items.map((item, index) => {
+        const distance = Math.abs(index - Math.round(scrollY / itemHeight));
+        const opacity = Math.max(0.3, 1 - distance * 0.3);
+        const scale = Math.max(0.8, 1 - distance * 0.1);
+        return (
+          <View
+            key={item}
+            style={{ height: itemHeight, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ fontSize: 22 * scale, opacity, fontWeight: distance === 0 ? '700' : '400', color: distance === 0 ? '#059669' : '#64748B' }}>
+              {String(item).padStart(2, '0')}
+            </Text>
+          </View>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
+// 日期选择器弹窗
+function DatePickerModal({
+  visible,
+  initialDate,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  initialDate: string;
+  onConfirm: (date: string) => void;
+  onCancel: () => void;
+}) {
+  const ITEM_HEIGHT = 44;
+  const today = new Date();
+
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth() + 1);
+  const [day, setDay] = useState(today.getDate());
+
+  useEffect(() => {
+    if (visible && initialDate) {
+      const d = new Date(initialDate + 'T00:00:00');
+      setYear(d.getFullYear());
+      setMonth(d.getMonth() + 1);
+      setDay(d.getDate());
+    }
+  }, [visible, initialDate]);
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const years = Array.from({ length: 10 }, (_, i) => today.getFullYear() - 2 + i);
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  const handleYearChange = (v: number) => setYear(v);
+  const handleMonthChange = (v: number) => {
+    setMonth(v);
+    const maxDay = new Date(year, v, 0).getDate();
+    if (day > maxDay) setDay(maxDay);
+  };
+  const handleDayChange = (v: number) => setDay(v);
+
+  const handleConfirm = () => {
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    onConfirm(dateStr);
+  };
+
+  const yearIndex = years.indexOf(year);
+  const monthIndex = months.indexOf(month);
+  const dayIndex = days.indexOf(day);
+
+  if (!visible) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <View style={dpStyles.overlay}>
+        <View style={dpStyles.container}>
+          <View style={dpStyles.header}>
+            <Text style={dpStyles.title}>选择完成日期</Text>
+            <Text style={dpStyles.subtitle}>滚动选择年、月、日</Text>
+          </View>
+          <View style={dpStyles.columnsWrapper}>
+            <View style={dpStyles.column}>
+              <Text style={dpStyles.columnLabel}>年</Text>
+              <ScrollColumn items={years} selectedIndex={yearIndex >= 0 ? yearIndex : 0} onSelect={handleYearChange} itemHeight={ITEM_HEIGHT} />
+            </View>
+            <View style={dpStyles.column}>
+              <Text style={dpStyles.columnLabel}>月</Text>
+              <ScrollColumn items={months} selectedIndex={monthIndex >= 0 ? monthIndex : 0} onSelect={handleMonthChange} itemHeight={ITEM_HEIGHT} />
+            </View>
+            <View style={dpStyles.column}>
+              <Text style={dpStyles.columnLabel}>日</Text>
+              <ScrollColumn items={days} selectedIndex={dayIndex >= 0 ? dayIndex : 0} onSelect={handleDayChange} itemHeight={ITEM_HEIGHT} />
+            </View>
+          </View>
+          <View style={dpStyles.footer}>
+            <TouchableOpacity style={dpStyles.cancelBtn} onPress={onCancel}>
+              <Text style={dpStyles.cancelText}>取消</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={dpStyles.confirmBtn} onPress={handleConfirm}>
+              <Text style={dpStyles.confirmText}>确认完成</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const dpStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  container: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 40,
+  },
+  header: {
+    paddingTop: 20,
+    paddingBottom: 12,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
+  columnsWrapper: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+    gap: 16,
+  },
+  column: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  columnLabel: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginBottom: 4,
+    fontWeight: '600',
+  },
+  footer: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    gap: 12,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  cancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  confirmBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#059669',
+    alignItems: 'center',
+  },
+  confirmText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+});
+
 export default function PatientDetailScreen() {
   const { patientId } = useSafeSearchParams<{ patientId: number }>();
   const [patient, setPatient] = useState<PatientDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [datePickerVisible, setDatePickerVisible] = useState(false);
+  const [pendingStep, setPendingStep] = useState<FollowupStep | null>(null);
   const router = useSafeRouter();
   const insets = useSafeAreaInsets();
 
@@ -79,46 +302,44 @@ export default function PatientDetailScreen() {
     }, [fetchPatient])
   );
 
-  const handleMarkComplete = async (step: FollowupStep) => {
-    const today = new Date().toISOString().split('T')[0];
-    const plannedDate = step.scheduled_date;
-    const isOnTime = today === plannedDate;
-    const message = isOnTime
-      ? `确认完成「${STEP_CONFIG[step.step_type]?.label || '此步骤'}」？\n完成日期：${today}`
-      : `完成日期（${today}）与计划日期（${plannedDate}）不同，后续随诊日期将自动调整。\n\n确认完成？`;
+  const handleMarkComplete = (step: FollowupStep) => {
+    setPendingStep(step);
+    setDatePickerVisible(true);
+  };
 
-    Alert.alert(
-      '确认完成',
-      message,
-      [
-        { text: '取消', style: 'cancel' },
+  const handleDateConfirm = async (selectedDate: string) => {
+    if (!pendingStep || !patientId) return;
+    setDatePickerVisible(false);
+
+    const plannedDate = pendingStep.scheduled_date;
+    const isOnTime = selectedDate === plannedDate;
+
+    try {
+      /**
+       * 服务端文件：server/src/routes/patients.ts
+       * 接口：PUT /api/v1/patients/:patientId/steps/:stepId
+       * Body 参数：completed_date: string (YYYY-MM-DD)
+       */
+      const response = await fetch(
+        `${API_BASE}/patients/${patientId}/steps/${pendingStep.id}`,
         {
-          text: '确认完成',
-          onPress: async () => {
-            try {
-              const response = await fetch(
-                `${API_BASE}/patients/${patientId}/steps/${step.id}`,
-                {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ completed_date: today }),
-                }
-              );
-              if (!response.ok) throw new Error('更新失败');
-              const data = await response.json();
-              if (data.allSteps) {
-                setPatient(prev => prev ? { ...prev, steps: data.allSteps } : prev);
-              }
-              if (!isOnTime) {
-                Alert.alert('已调整', '后续随诊日期已根据实际完成日期自动调整');
-              }
-            } catch (err) {
-              Alert.alert('错误', '操作失败，请重试');
-            }
-          },
-        },
-      ]
-    );
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed_date: selectedDate }),
+        }
+      );
+      if (!response.ok) throw new Error('更新失败');
+      const data = await response.json();
+      if (data.allSteps) {
+        setPatient(prev => prev ? { ...prev, steps: data.allSteps } : prev);
+      }
+      if (!isOnTime) {
+        Alert.alert('已调整', '后续随诊日期已根据实际完成日期自动调整');
+      }
+    } catch (err) {
+      Alert.alert('错误', '操作失败，请重试');
+    }
+    setPendingStep(null);
   };
 
   const handleResetStep = async (step: FollowupStep) => {
@@ -364,6 +585,16 @@ export default function PatientDetailScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <DatePickerModal
+        visible={datePickerVisible}
+        initialDate={pendingStep?.scheduled_date || new Date().toISOString().split('T')[0]}
+        onConfirm={handleDateConfirm}
+        onCancel={() => {
+          setDatePickerVisible(false);
+          setPendingStep(null);
+        }}
+      />
     </Screen>
   );
 }
