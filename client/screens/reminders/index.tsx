@@ -68,17 +68,29 @@ function TimePickerColumn({
   initialValue,
   onSelect,
   label,
+  loop = false,
 }: {
   values: number[];
   initialValue: number;
   onSelect: (v: number) => void;
   label: string;
+  loop?: boolean;
 }) {
   const flatListRef = useRef<FlatList>(null);
   const itemHeight = 44;
   const initialIdx = values.indexOf(initialValue);
-  const [currentIndex, setCurrentIndex] = useState(initialIdx >= 0 ? initialIdx : 0);
+  
+  // 循环模式：重复数据3次，初始位置在中间
+  const repeatCount = loop ? 3 : 1;
+  const extendedValues = loop 
+    ? [...values, ...values, ...values]
+    : values;
+  const middleOffset = loop ? values.length : 0;
+  const startIdx = loop ? middleOffset + (initialIdx >= 0 ? initialIdx : 0) : (initialIdx >= 0 ? initialIdx : 0);
+  
+  const [currentIndex, setCurrentIndex] = useState(startIdx);
   const initializedRef = useRef(false);
+  const isAdjustingRef = useRef(false);
 
   const visibleCount = 5;
   const visibleHeight = itemHeight * visibleCount;
@@ -86,21 +98,61 @@ function TimePickerColumn({
 
   // 只在首次挂载时滚动到初始位置
   useEffect(() => {
-    if (!initializedRef.current && initialIdx >= 0) {
+    if (!initializedRef.current) {
       initializedRef.current = true;
       setTimeout(() => {
         flatListRef.current?.scrollToOffset({ 
-          offset: initialIdx * itemHeight, 
+          offset: startIdx * itemHeight, 
           animated: false 
         });
       }, 100);
     }
   }, []);
 
+  // 循环模式：滚动到边界时自动调整到中间
+  const handleScroll = (event: any) => {
+    if (!loop || isAdjustingRef.current) return;
+    
+    const y = event.nativeEvent.contentOffset.y;
+    const totalLength = extendedValues.length;
+    const singleLength = values.length;
+    
+    // 如果滚动到第一个重复区域，跳到中间
+    if (y < singleLength * itemHeight * 0.5) {
+      isAdjustingRef.current = true;
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({
+          offset: (middleOffset + singleLength) * itemHeight,
+          animated: false
+        });
+        isAdjustingRef.current = false;
+      }, 50);
+    }
+    // 如果滚动到最后一个重复区域，跳到中间
+    else if (y > (middleOffset + singleLength * 1.5) * itemHeight) {
+      isAdjustingRef.current = true;
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({
+          offset: middleOffset * itemHeight,
+          animated: false
+        });
+        isAdjustingRef.current = false;
+      }, 50);
+    }
+  };
+
   // 滚动停止时自动保存
   const handleMomentumScrollEnd = (event: any) => {
+    if (isAdjustingRef.current) return;
+    
     const y = event.nativeEvent.contentOffset.y;
-    const index = Math.max(0, Math.min(Math.round(y / itemHeight), values.length - 1));
+    let index = Math.max(0, Math.min(Math.round(y / itemHeight), extendedValues.length - 1));
+    
+    // 循环模式：将索引映射回原始范围
+    if (loop) {
+      index = index % values.length;
+    }
+    
     setCurrentIndex(index);
     onSelect(values[index]);
   };
@@ -112,7 +164,9 @@ function TimePickerColumn({
   }), [itemHeight]);
 
   const renderItem = useCallback(({ item, index }: { item: number; index: number }) => {
-    const isSelected = index === currentIndex;
+    // 循环模式：比较映射后的索引
+    const displayIndex = loop ? index % values.length : index;
+    const isSelected = displayIndex === currentIndex;
     return (
       <View style={[tpStyles.item, isSelected && tpStyles.itemSelected]}>
         <Text
@@ -125,7 +179,7 @@ function TimePickerColumn({
         </Text>
       </View>
     );
-  }, [currentIndex]);
+  }, [currentIndex, loop, values.length]);
 
   return (
     <View style={tpStyles.column}>
@@ -144,9 +198,9 @@ function TimePickerColumn({
         }} />
         <FlatList
           ref={flatListRef}
-          data={values}
+          data={extendedValues}
           renderItem={renderItem}
-          keyExtractor={(item) => String(item)}
+          keyExtractor={(item, index) => `${item}-${index}`}
           style={{ flex: 1, width: '100%' }}
           contentContainerStyle={{ 
             paddingTop: paddingVertical,
@@ -156,10 +210,11 @@ function TimePickerColumn({
           snapToInterval={itemHeight}
           decelerationRate="fast"
           onMomentumScrollEnd={handleMomentumScrollEnd}
+          onScroll={handleScroll}
           bounces={false}
           overScrollMode="never"
           getItemLayout={getItemLayout}
-          initialScrollIndex={initialIdx >= 0 ? initialIdx : 0}
+          initialScrollIndex={startIdx}
           removeClippedSubviews={false}
         />
       </View>
@@ -527,6 +582,7 @@ export default function RemindersScreen() {
                   setRemTime(timeStr);
                 }}
                 label="分"
+                loop={true}
               />
             </View>
             <Text style={styles.pickerHint}>北京时间（UTC+8）</Text>
