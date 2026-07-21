@@ -54,7 +54,7 @@ function getDaysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-// 滚动列组件 - 极简实现，避免回跳
+// 滚动列组件 - 使用 FlatList + pagingEnabled，更可靠
 function ScrollColumn({
   items,
   initialIndex,
@@ -66,21 +66,26 @@ function ScrollColumn({
   onSelect: (value: number) => void;
   itemHeight: number;
 }) {
-  const scrollRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const initializedRef = useRef(false);
+  const isScrollingRef = useRef(false);
 
   // 只在首次挂载时滚动到初始位置
   useEffect(() => {
     if (!initializedRef.current && initialIndex >= 0) {
       initializedRef.current = true;
       setTimeout(() => {
-        scrollRef.current?.scrollTo({ y: initialIndex * itemHeight, animated: false });
+        flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false });
       }, 100);
     }
-  }, []); // 空依赖，只执行一次
+  }, []);
 
-  const handleMomentumScrollEnd = (event: any) => {
+  const handleMomentumScrollEnd = () => {
+    isScrollingRef.current = false;
+  };
+
+  const handleScrollEndDrag = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset.y;
     const index = Math.max(0, Math.min(Math.round(offsetY / itemHeight), items.length - 1));
     setCurrentIndex(index);
@@ -89,6 +94,33 @@ function ScrollColumn({
 
   const visibleCount = 5;
   const visibleHeight = itemHeight * visibleCount;
+
+  const renderItem = useCallback(({ item, index }: { item: number; index: number }) => {
+    const distance = Math.abs(index - currentIndex);
+    const opacity = Math.max(0.3, 1 - distance * 0.3);
+    const scale = Math.max(0.8, 1 - distance * 0.1);
+    const isSelected = index === currentIndex;
+    return (
+      <View 
+        style={{ height: itemHeight, alignItems: 'center', justifyContent: 'center', width: '100%' }}
+      >
+        <Text style={{
+          fontSize: 24 * scale,
+          opacity,
+          fontWeight: isSelected ? '700' : '400',
+          color: isSelected ? '#059669' : '#64748B',
+        }}>
+          {String(item).padStart(2, '0')}
+        </Text>
+      </View>
+    );
+  }, [currentIndex, itemHeight]);
+
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: itemHeight,
+    offset: itemHeight * index,
+    index,
+  }), [itemHeight]);
 
   return (
     <View style={{ height: visibleHeight, width: '100%' }}>
@@ -103,43 +135,28 @@ function ScrollColumn({
         borderRadius: 10,
         zIndex: 0,
       }} />
-      <ScrollView
-        ref={scrollRef}
+      <FlatList
+        ref={flatListRef}
+        data={items}
+        renderItem={renderItem}
+        keyExtractor={(item) => String(item)}
         style={{ flex: 1, width: '100%' }}
         contentContainerStyle={{ 
           paddingTop: itemHeight * 2,
           paddingBottom: itemHeight * 2,
         }}
         showsVerticalScrollIndicator={false}
-        snapToInterval={itemHeight}
-        snapToAlignment="center"
+        pagingEnabled
         decelerationRate="fast"
         onMomentumScrollEnd={handleMomentumScrollEnd}
+        onScrollEndDrag={handleScrollEndDrag}
+        onScrollBeginDrag={() => { isScrollingRef.current = true; }}
         bounces={false}
         overScrollMode="never"
-      >
-        {items.map((item, index) => {
-          const distance = Math.abs(index - currentIndex);
-          const opacity = Math.max(0.3, 1 - distance * 0.3);
-          const scale = Math.max(0.8, 1 - distance * 0.1);
-          const isSelected = index === currentIndex;
-          return (
-            <View 
-              key={item}
-              style={{ height: itemHeight, alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Text style={{
-                fontSize: 24 * scale,
-                opacity,
-                fontWeight: isSelected ? '700' : '400',
-                color: isSelected ? '#059669' : '#64748B',
-              }}>
-                {String(item).padStart(2, '0')}
-              </Text>
-            </View>
-          );
-        })}
-      </ScrollView>
+        getItemLayout={getItemLayout}
+        initialScrollIndex={initialIndex}
+        removeClippedSubviews={false}
+      />
     </View>
   );
 }

@@ -74,72 +74,61 @@ function TimePickerColumn({
   onSelect: (v: number) => void;
   label: string;
 }) {
-  const scrollRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<FlatList>(null);
   const itemHeight = 44;
-  const [currentIndex, setCurrentIndex] = useState(values.indexOf(initialValue));
-  const initializedRef = useRef(false);
-
-  // 只在首次挂载时滚动到初始位置
-  useEffect(() => {
-    if (!initializedRef.current) {
-      initializedRef.current = true;
-      const initialIdx = values.indexOf(initialValue);
-      if (initialIdx >= 0) {
-        setTimeout(() => {
-          scrollRef.current?.scrollTo({ y: initialIdx * itemHeight, animated: false });
-        }, 100);
-      }
-    }
-  }, []); // 空依赖，只执行一次
+  const initialIdx = values.indexOf(initialValue);
+  const [currentIndex, setCurrentIndex] = useState(initialIdx >= 0 ? initialIdx : 0);
 
   // 滚动停止时自动保存
-  const handleMomentumScrollEnd = (event: any) => {
+  const handleScrollEndDrag = (event: any) => {
     const y = event.nativeEvent.contentOffset.y;
     const index = Math.max(0, Math.min(Math.round(y / itemHeight), values.length - 1));
     setCurrentIndex(index);
     onSelect(values[index]);
   };
 
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: itemHeight,
+    offset: itemHeight * index,
+    index,
+  }), [itemHeight]);
+
+  const renderItem = useCallback(({ item, index }: { item: number; index: number }) => {
+    const isSelected = index === currentIndex;
+    return (
+      <View style={[tpStyles.item, isSelected && tpStyles.itemSelected]}>
+        <Text
+          style={[
+            tpStyles.itemText,
+            isSelected && tpStyles.itemTextSelected,
+          ]}
+        >
+          {String(item).padStart(2, '0')}
+        </Text>
+      </View>
+    );
+  }, [currentIndex]);
+
   return (
     <View style={tpStyles.column}>
       <Text style={tpStyles.columnLabel}>{label}</Text>
-      <ScrollView
-        ref={scrollRef}
+      <FlatList
+        ref={flatListRef}
+        data={values}
+        renderItem={renderItem}
+        keyExtractor={(item) => String(item)}
         style={tpStyles.scrollView}
         contentContainerStyle={tpStyles.scrollContent}
         showsVerticalScrollIndicator={false}
-        snapToInterval={itemHeight}
-        snapToAlignment="center"
+        pagingEnabled
         decelerationRate="fast"
-        onMomentumScrollEnd={handleMomentumScrollEnd}
+        onScrollEndDrag={handleScrollEndDrag}
         bounces={false}
         overScrollMode="never"
-      >
-        {values.map((v, index) => {
-          const isSelected = index === currentIndex;
-          return (
-            <TouchableOpacity
-              key={v}
-              style={[tpStyles.item, isSelected && tpStyles.itemSelected]}
-              activeOpacity={0.6}
-              onPress={() => {
-                scrollRef.current?.scrollTo({ y: index * itemHeight, animated: true });
-                setCurrentIndex(index);
-                onSelect(v);
-              }}
-            >
-              <Text
-                style={[
-                  tpStyles.itemText,
-                  isSelected && tpStyles.itemTextSelected,
-                ]}
-              >
-                {String(v).padStart(2, '0')}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+        getItemLayout={getItemLayout}
+        initialScrollIndex={initialIdx >= 0 ? initialIdx : 0}
+        removeClippedSubviews={false}
+      />
     </View>
   );
 }
