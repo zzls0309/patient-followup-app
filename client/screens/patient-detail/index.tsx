@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  FlatList,
 } from 'react-native';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
@@ -53,7 +54,7 @@ function getDaysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-// 滚动列组件 - 优化顺滑度
+// 滚动列组件 - 使用 FlatList 实现更顺滑的滚动
 function ScrollColumn({
   items,
   selectedIndex,
@@ -65,21 +66,23 @@ function ScrollColumn({
   onSelect: (value: number) => void;
   itemHeight: number;
 }) {
-  const scrollViewRef = useRef<ScrollView>(null);
+  const flatListRef = useRef<FlatList>(null);
   const [scrollY, setScrollY] = useState(selectedIndex * itemHeight);
   const isUserScrollingRef = useRef(false);
-  const lastSelectedRef = useRef(selectedIndex);
+  const lastUserSelectedRef = useRef(selectedIndex);
 
-  // 只在外部重置 selectedIndex 时（非用户滚动引起）才滚动
+  // 只在外部重置 selectedIndex 时滚动
   useEffect(() => {
-    if (selectedIndex !== lastSelectedRef.current && !isUserScrollingRef.current) {
-      scrollViewRef.current?.scrollTo({ y: selectedIndex * itemHeight, animated: false });
+    if (selectedIndex !== lastUserSelectedRef.current) {
+      isUserScrollingRef.current = false;
+      flatListRef.current?.scrollToOffset({ offset: selectedIndex * itemHeight, animated: false });
       setScrollY(selectedIndex * itemHeight);
+      lastUserSelectedRef.current = selectedIndex;
     }
-    lastSelectedRef.current = selectedIndex;
   }, [selectedIndex, itemHeight]);
 
   const handleScroll = (event: any) => {
+    if (!isUserScrollingRef.current) return;
     const offsetY = event.nativeEvent.contentOffset.y;
     setScrollY(offsetY);
   };
@@ -89,15 +92,14 @@ function ScrollColumn({
     const index = Math.round(offsetY / itemHeight);
     const clampedIndex = Math.max(0, Math.min(index, items.length - 1));
     const snappedY = clampedIndex * itemHeight;
+    
+    isUserScrollingRef.current = false;
     setScrollY(snappedY);
-    isUserScrollingRef.current = true;
+    lastUserSelectedRef.current = clampedIndex;
     onSelect(items[clampedIndex]);
-    // 精确对齐到整数位置
-    scrollViewRef.current?.scrollTo({ y: snappedY, animated: true });
-    // 短暂延迟后重置标志，防止 useEffect 干扰
-    setTimeout(() => {
-      isUserScrollingRef.current = false;
-    }, 100);
+    
+    // 精确对齐
+    flatListRef.current?.scrollToOffset({ offset: snappedY, animated: true });
   };
 
   const handleScrollBeginDrag = () => {
@@ -120,31 +122,17 @@ function ScrollColumn({
         borderRadius: 10,
         zIndex: 0,
       }} />
-      <ScrollView
-        ref={scrollViewRef}
-        style={{ flex: 1, width: '100%' }}
-        contentContainerStyle={{ paddingVertical: paddingHeight }}
-        showsVerticalScrollIndicator={false}
-        snapToInterval={itemHeight}
-        snapToAlignment="center"
-        decelerationRate="normal"
-        scrollEventThrottle={16}
-        onScroll={handleScroll}
-        onScrollBeginDrag={handleScrollBeginDrag}
-        onMomentumScrollEnd={handleMomentumScrollEnd}
-        bounces={false}
-        overScrollMode="never"
-      >
-        {items.map((item, index) => {
+      <FlatList
+        ref={flatListRef}
+        data={items}
+        keyExtractor={(item) => String(item)}
+        renderItem={({ item, index }) => {
           const distance = Math.abs((scrollY / itemHeight) - index);
           const opacity = Math.max(0.25, 1 - distance * 0.35);
           const scale = Math.max(0.75, 1 - distance * 0.12);
           const isSelected = distance < 0.5;
           return (
-            <View
-              key={item}
-              style={{ height: itemHeight, alignItems: 'center', justifyContent: 'center' }}
-            >
+            <View style={{ height: itemHeight, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{
                 fontSize: 24 * scale,
                 opacity,
@@ -155,8 +143,26 @@ function ScrollColumn({
               </Text>
             </View>
           );
+        }}
+        style={{ flex: 1, width: '100%' }}
+        contentContainerStyle={{ paddingVertical: paddingHeight }}
+        showsVerticalScrollIndicator={false}
+        getItemLayout={(_, index) => ({
+          length: itemHeight,
+          offset: index * itemHeight,
+          index,
         })}
-      </ScrollView>
+        snapToInterval={itemHeight}
+        snapToAlignment="center"
+        decelerationRate="fast"
+        scrollEventThrottle={16}
+        onScroll={handleScroll}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        bounces={false}
+        overScrollMode="never"
+        initialScrollIndex={selectedIndex}
+      />
     </View>
   );
 }
