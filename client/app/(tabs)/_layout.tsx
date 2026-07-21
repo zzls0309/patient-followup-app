@@ -13,25 +13,16 @@ export default function TabLayout() {
     '--color-border',
   ]) as string[];
 
-  let tabBarStyle = {
-    backgroundColor: '#F0F0F3',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderTopWidth: 0,
-    paddingTop: 12,
-    paddingBottom: insets.bottom + 8,
-    height: 'auto' as unknown as number,
-    shadowColor: '#D1D9E6',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 8,
+  let tabBarStyle: Record<string, unknown> = {
+    backgroundColor: background,
+    borderTopWidth: 1,
+    borderTopColor: border,
   };
 
   if (Platform.OS === 'web') {
     tabBarStyle = {
       ...tabBarStyle,
-      height: 'auto' as unknown as number,
+      height: 'auto',
     };
   }
 
@@ -40,12 +31,8 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle,
-        tabBarActiveTintColor: '#059669',
-        tabBarInactiveTintColor: '#B2BEC3',
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
+        tabBarActiveTintColor: accent,
+        tabBarInactiveTintColor: muted,
       }}
     >
       <Tabs.Screen
@@ -53,7 +40,16 @@ export default function TabLayout() {
         options={{
           title: '患者',
           tabBarIcon: ({ color }) => (
-            <FontAwesome6 name="users" size={20} color={color} />
+            <FontAwesome6 name="users" size={18} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: '日历',
+          tabBarIcon: ({ color }) => (
+            <FontAwesome6 name="calendar-days" size={18} color={color} />
           ),
         }}
       />
@@ -62,7 +58,7 @@ export default function TabLayout() {
         options={{
           title: '提醒',
           tabBarIcon: ({ color }) => (
-            <FontAwesome6 name="bell" size={20} color={color} />
+            <FontAwesome6 name="bell" size={18} color={color} />
           ),
         }}
       />

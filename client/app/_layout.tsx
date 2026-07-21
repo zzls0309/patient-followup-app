@@ -1,17 +1,22 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { LogBox } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Provider } from '@/components/Provider';
+import { initNotifications } from '@/utils/notifications';
 
 import '../global.css';
 
 LogBox.ignoreLogs([
   "TurboModuleRegistry.getEnforcing(...): 'RNMapsAirModule' could not be found",
-  // 添加其它想暂时忽略的错误或警告信息
 ]);
 
 export default function RootLayout() {
+  useEffect(() => {
+    initNotifications();
+  }, []);
+
   return (
     <Provider>
       <Stack
@@ -25,6 +30,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ title: "" }} />
         <Stack.Screen name="add-patient" options={{ title: "" }} />
         <Stack.Screen name="patient-detail" options={{ title: "" }} />
+        <Stack.Screen name="import-patients" options={{ title: "" }} />
       </Stack>
       <Toast />
     </Provider>

@@ -85,9 +85,15 @@ export default function PatientDetailScreen() {
 
   const handleMarkComplete = async (step: FollowupStep) => {
     const today = new Date().toISOString().split('T')[0];
+    const plannedDate = step.scheduled_date;
+    const isOnTime = today === plannedDate;
+    const message = isOnTime
+      ? `确认完成「${STEP_CONFIG[step.step_type]?.label || '此步骤'}」？\n完成日期：${today}`
+      : `完成日期（${today}）与计划日期（${plannedDate}）不同，后续随诊日期将自动调整。\n\n确认完成？`;
+
     Alert.alert(
       '确认完成',
-      `确认完成「${STEP_CONFIG[step.step_type]?.label || '此步骤'}」？\n完成日期：${today}`,
+      message,
       [
         { text: '取消', style: 'cancel' },
         {
@@ -109,7 +115,13 @@ export default function PatientDetailScreen() {
                 }
               );
               if (!response.ok) throw new Error('更新失败');
-              fetchPatient();
+              const data = await response.json();
+              if (data.allSteps) {
+                setPatient(prev => prev ? { ...prev, steps: data.allSteps } : prev);
+              }
+              if (!isOnTime) {
+                Alert.alert('已调整', '后续随诊日期已根据实际完成日期自动调整');
+              }
             } catch (err) {
               Alert.alert('错误', '操作失败，请重试');
             }

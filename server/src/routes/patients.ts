@@ -1,25 +1,66 @@
 import { Router } from 'express';
+import multer from 'multer';
+import * as XLSX from 'xlsx';
 import { getSupabaseClient } from '../storage/database/supabase-client.js';
 
 const router = Router();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+// 步骤类型配置
+const STEP_TYPES = ['treatment_1', 'treatment_2', 'treatment_3', 'photo'] as const;
+const STEP_INTERVAL_DAYS = 28;
+
+// 北京时间获取今天的日期字符串 (YYYY-MM-DD)
+function getTodayBJ(): string {
+  const now = new Date();
+  const bjOffset = 8 * 60;
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const bjTime = new Date(utc + bjOffset * 60000);
+  return bjTime.toISOString().split('T')[0];
+}
+
+// 从日期字符串生成北京时间日期对象
+function parseDateBJ(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// 日期格式化
+function formatDateBJ(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+// 根据起始日期生成4个步骤的计划日期
+function generateStepDates(firstDate: string): { step_type: string; step_number: number; scheduled_date: string }[] {
+  const base = parseDateBJ(firstDate);
+  return STEP_TYPES.map((stepType, i) => {
+    const d = new Date(base);
+    d.setDate(base.getDate() + i * STEP_INTERVAL_DAYS);
+    return {
+      step_type: stepType,
+      step_number: i + 1,
+      scheduled_date: formatDateBJ(d),
+    };
+  });
+}
 
 // GET /api/v1/patients - 获取所有患者列表
 router.get('/', async (_req, res) => {
   try {
     const client = getSupabaseClient();
-
-    // 获取所有患者
     const { data: patients, error: patientsError } = await client
       .from('patients')
       .select('*')
       .order('created_at', { ascending: false });
     if (patientsError) throw new Error(`查询失败: ${patientsError.message}`);
+    if (!patients || patients.length === 0) return res.json([]);
 
-    if (!patients || patients.length === 0) {
-      return res.json([]);
-    }
-
-    // 批量获取所有步骤
     const patientIds = patients.map(p => p.id);
     const { data: allSteps, error: stepsError } = await client
       .from('followup_steps')
@@ -28,24 +69,16 @@ router.get('/', async (_req, res) => {
       .order('step_number', { ascending: true });
     if (stepsError) throw new Error(`查询步骤失败: ${stepsError.message}`);
 
-    // 组装数据
     const result = patients.map(p => {
       const steps = (allSteps || []).filter(s => s.patient_id === p.id);
       const completedSteps = steps.filter(s => s.completed_date != null).length;
       const totalSteps = steps.length;
       const pendingSteps = steps.filter(s => s.completed_date == null);
       const nextStepDate = pendingSteps.length > 0
-        ? pendingSteps.reduce((earliest, s) => s.scheduled_date < earliest.scheduled_date ? s : earliest).scheduled_date
+        ? pendingSteps.reduce((e, s) => s.scheduled_date < e.scheduled_date ? s : e).scheduled_date
         : null;
-
-      return {
-        ...p,
-        completed_steps: completedSteps.toString(),
-        total_steps: totalSteps.toString(),
-        next_step_date: nextStepDate,
-      };
+      return { ...p, completed_steps: completedSteps.toString(), total_steps: totalSteps.toString(), next_step_date: nextStepDate };
     });
-
     res.json(result);
   } catch (err) {
     console.error('Error fetching patients:', err);
@@ -53,46 +86,35 @@ router.get('/', async (_req, res) => {
   }
 });
 
-// GET /api/v1/patients/reminders/upcoming - 获取即将到期和已逾期的随访步骤
-// 必须在 /:id 之前定义
+// GET /api/v1/patients/reminders/upcoming - 获取提前2天及已逾期的随访步骤
 router.get('/reminders/upcoming', async (_req, res) => {
   try {
     const client = getSupabaseClient();
-    const today = new Date().toISOString().split('T')[0];
-    const sevenDaysLater = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const today = getTodayBJ();
+    const twoDaysLater = formatDateBJ(new Date(parseDateBJ(today).getTime() + 2 * 86400000));
 
-    // 获取未完成且计划日期在7天内的步骤
     const { data: steps, error: stepsError } = await client
       .from('followup_steps')
       .select('*')
       .is('completed_date', null)
-      .lte('scheduled_date', sevenDaysLater)
+      .lte('scheduled_date', twoDaysLater)
       .order('scheduled_date', { ascending: true });
     if (stepsError) throw new Error(`查询失败: ${stepsError.message}`);
+    if (!steps || steps.length === 0) return res.json([]);
 
-    if (!steps || steps.length === 0) {
-      return res.json([]);
-    }
-
-    // 获取关联的患者信息
     const patientIds = [...new Set(steps.map(s => s.patient_id))];
     const { data: patients, error: patientsError } = await client
       .from('patients')
       .select('id, name, phone')
       .in('id', patientIds);
     if (patientsError) throw new Error(`查询患者失败: ${patientsError.message}`);
-
     const patientMap = new Map((patients || []).map(p => [p.id, p]));
 
-    const result = steps.map(s => {
-      const patient = patientMap.get(s.patient_id);
-      return {
-        ...s,
-        patient_name: patient?.name || '未知',
-        patient_phone: patient?.phone || '',
-      };
-    });
-
+    const result = steps.map(s => ({
+      ...s,
+      patient_name: patientMap.get(s.patient_id)?.name || '未知',
+      patient_phone: patientMap.get(s.patient_id)?.phone || '',
+    }));
     res.json(result);
   } catch (err) {
     console.error('Error fetching reminders:', err);
@@ -100,29 +122,167 @@ router.get('/reminders/upcoming', async (_req, res) => {
   }
 });
 
-// GET /api/v1/patients/:id - 获取单个患者详情（含随访步骤）
+// GET /api/v1/patients/calendar - 获取日历数据（当月+下月）
+router.get('/calendar', async (req, res) => {
+  try {
+    const client = getSupabaseClient();
+    const year = parseInt(req.query.year as string);
+    const month = parseInt(req.query.month as string);
+    if (!year || !month || month < 1 || month > 12) {
+      return res.status(400).json({ error: 'Invalid year or month' });
+    }
+
+    // 计算当月和下月的日期范围
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
+    const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-31`;
+
+    const { data: steps, error: stepsError } = await client
+      .from('followup_steps')
+      .select('id, patient_id, step_number, step_type, scheduled_date, completed_date')
+      .is('completed_date', null)
+      .gte('scheduled_date', startDate)
+      .lte('scheduled_date', endDate)
+      .order('scheduled_date', { ascending: true });
+    if (stepsError) throw new Error(`查询失败: ${stepsError.message}`);
+    if (!steps || steps.length === 0) return res.json([]);
+
+    const patientIds = [...new Set(steps.map(s => s.patient_id))];
+    const { data: patients, error: patientsError } = await client
+      .from('patients')
+      .select('id, name')
+      .in('id', patientIds);
+    if (patientsError) throw new Error(`查询患者失败: ${patientsError.message}`);
+    const patientMap = new Map((patients || []).map(p => [p.id, p]));
+
+    // 按日期分组
+    const stepLabels: Record<string, string> = {
+      treatment_1: '首次', treatment_2: '二次', treatment_3: '三次', photo: '拍照',
+    };
+    const dateMap: Record<string, { patient_name: string; step_label: string; step_type: string; patient_id: number }[]> = {};
+    for (const s of steps) {
+      const date = s.scheduled_date;
+      if (!dateMap[date]) dateMap[date] = [];
+      dateMap[date].push({
+        patient_name: patientMap.get(s.patient_id)?.name || '未知',
+        step_label: stepLabels[s.step_type] || s.step_type,
+        step_type: s.step_type,
+        patient_id: s.patient_id,
+      });
+    }
+    res.json(dateMap);
+  } catch (err) {
+    console.error('Error fetching calendar:', err);
+    res.status(500).json({ error: 'Failed to fetch calendar' });
+  }
+});
+
+// POST /api/v1/patients/import - Excel批量导入患者
+router.post('/import', upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  try {
+    const client = getSupabaseClient();
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
+
+    if (rows.length === 0) return res.status(400).json({ error: 'Excel文件为空' });
+
+    const results = { success: 0, failed: 0, errors: [] as string[] };
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2; // Excel行号（含表头）
+      const name = String(row['姓名'] || row['name'] || '').trim();
+      const phone = String(row['电话'] || row['手机'] || row['phone'] || '').trim();
+      const gender = String(row['性别'] || row['gender'] || '').trim();
+      const age = parseInt(String(row['年龄'] || row['age'] || '0'));
+      const notes = String(row['备注'] || row['notes'] || '').trim();
+      const firstDate = String(row['首次治疗日期'] || row['firstTreatmentDate'] || row['首次治疗'] || '').trim();
+
+      if (!name) {
+        results.failed++;
+        results.errors.push(`第${rowNum}行：缺少姓名`);
+        continue;
+      }
+      if (!firstDate) {
+        results.failed++;
+        results.errors.push(`第${rowNum}行(${name})：缺少首次治疗日期`);
+        continue;
+      }
+
+      // 验证日期格式
+      let validDate = '';
+      const dateMatch = firstDate.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (dateMatch) {
+        validDate = `${dateMatch[1]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[3].padStart(2, '0')}`;
+      } else {
+        // 尝试解析 Excel 日期序列号
+        const numDate = Number(firstDate);
+        if (!isNaN(numDate) && numDate > 0) {
+          const d = XLSX.SSF.parse_date_code(numDate);
+          if (d) {
+            validDate = `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+          }
+        }
+      }
+      if (!validDate) {
+        results.failed++;
+        results.errors.push(`第${rowNum}行(${name})：日期格式错误(${firstDate})`);
+        continue;
+      }
+
+      try {
+        // 创建患者
+        const { data: patient, error: patientError } = await client
+          .from('patients')
+          .insert({ name, phone, gender, age: isNaN(age) ? 0 : age, notes })
+          .select()
+          .single();
+        if (patientError) throw new Error(patientError.message);
+
+        // 创建步骤
+        const stepDates = generateStepDates(validDate);
+        const stepsToInsert = stepDates.map(s => ({
+          patient_id: patient.id,
+          step_number: s.step_number,
+          step_type: s.step_type,
+          scheduled_date: s.scheduled_date,
+        }));
+        const { error: stepsError } = await client.from('followup_steps').insert(stepsToInsert);
+        if (stepsError) throw new Error(stepsError.message);
+
+        results.success++;
+      } catch (dbErr) {
+        results.failed++;
+        results.errors.push(`第${rowNum}行(${name})：${dbErr instanceof Error ? dbErr.message : '数据库错误'}`);
+      }
+    }
+
+    res.json(results);
+  } catch (err) {
+    console.error('Error importing patients:', err);
+    res.status(500).json({ error: '导入失败' });
+  }
+});
+
+// GET /api/v1/patients/:id - 获取单个患者详情
 router.get('/:id', async (req, res) => {
   try {
     const client = getSupabaseClient();
     const { id } = req.params;
-
     const { data: patient, error: patientError } = await client
-      .from('patients')
-      .select('*')
-      .eq('id', parseInt(id))
-      .maybeSingle();
+      .from('patients').select('*').eq('id', parseInt(id)).maybeSingle();
     if (patientError) throw new Error(`查询失败: ${patientError.message}`);
-    if (!patient) {
-      return res.status(404).json({ error: 'Patient not found' });
-    }
+    if (!patient) return res.status(404).json({ error: 'Patient not found' });
 
     const { data: steps, error: stepsError } = await client
-      .from('followup_steps')
-      .select('*')
-      .eq('patient_id', parseInt(id))
+      .from('followup_steps').select('*').eq('patient_id', parseInt(id))
       .order('step_number', { ascending: true });
     if (stepsError) throw new Error(`查询步骤失败: ${stepsError.message}`);
-
     res.json({ ...patient, steps: steps || [] });
   } catch (err) {
     console.error('Error fetching patient:', err);
@@ -130,58 +290,28 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/v1/patients - 创建患者（同时创建4个随访步骤）
+// POST /api/v1/patients - 创建患者
 router.post('/', async (req, res) => {
   const { name, phone, gender, age, notes, firstTreatmentDate } = req.body;
   if (!name || !firstTreatmentDate) {
     return res.status(400).json({ error: 'Name and firstTreatmentDate are required' });
   }
-
   try {
     const client = getSupabaseClient();
-
-    // 创建患者
     const { data: patient, error: patientError } = await client
-      .from('patients')
-      .insert({
-        name,
-        phone: phone || '',
-        gender: gender || '',
-        age: age || 0,
-        notes: notes || '',
-      })
-      .select()
-      .single();
+      .from('patients').insert({ name, phone: phone || '', gender: gender || '', age: age || 0, notes: notes || '' })
+      .select().single();
     if (patientError) throw new Error(`创建患者失败: ${patientError.message}`);
 
-    // 创建4个随访步骤，间隔28天
-    const stepTypes = ['treatment_1', 'treatment_2', 'treatment_3', 'photo'];
-    const baseDate = new Date(firstTreatmentDate);
-
-    const stepsToInsert = stepTypes.map((stepType, i) => {
-      const scheduledDate = new Date(baseDate);
-      scheduledDate.setDate(baseDate.getDate() + i * 28);
-      return {
-        patient_id: patient.id,
-        step_number: i + 1,
-        step_type: stepType,
-        scheduled_date: scheduledDate.toISOString().split('T')[0],
-      };
-    });
-
-    const { error: stepsError } = await client
-      .from('followup_steps')
-      .insert(stepsToInsert);
+    const stepDates = generateStepDates(firstTreatmentDate);
+    const stepsToInsert = stepDates.map(s => ({
+      patient_id: patient.id, step_number: s.step_number, step_type: s.step_type, scheduled_date: s.scheduled_date,
+    }));
+    const { error: stepsError } = await client.from('followup_steps').insert(stepsToInsert);
     if (stepsError) throw new Error(`创建步骤失败: ${stepsError.message}`);
 
-    // 返回完整数据
-    const { data: steps, error: fetchStepsError } = await client
-      .from('followup_steps')
-      .select('*')
-      .eq('patient_id', patient.id)
-      .order('step_number', { ascending: true });
-    if (fetchStepsError) throw new Error(`查询步骤失败: ${fetchStepsError.message}`);
-
+    const { data: steps } = await client.from('followup_steps').select('*')
+      .eq('patient_id', patient.id).order('step_number', { ascending: true });
     res.status(201).json({ ...patient, steps: steps || [] });
   } catch (err) {
     console.error('Error creating patient:', err);
@@ -195,7 +325,6 @@ router.put('/:id', async (req, res) => {
     const client = getSupabaseClient();
     const { id } = req.params;
     const { name, phone, gender, age, notes } = req.body;
-
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (name !== undefined) updateData.name = name;
     if (phone !== undefined) updateData.phone = phone;
@@ -204,13 +333,8 @@ router.put('/:id', async (req, res) => {
     if (notes !== undefined) updateData.notes = notes;
 
     const { data: patient, error } = await client
-      .from('patients')
-      .update(updateData)
-      .eq('id', parseInt(id))
-      .select()
-      .single();
+      .from('patients').update(updateData).eq('id', parseInt(id)).select().single();
     if (error) throw new Error(`更新失败: ${error.message}`);
-
     res.json(patient);
   } catch (err) {
     console.error('Error updating patient:', err);
@@ -218,28 +342,16 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/v1/patients/:id - 删除患者（级联删除步骤）
+// DELETE /api/v1/patients/:id - 删除患者
 router.delete('/:id', async (req, res) => {
   try {
     const client = getSupabaseClient();
     const { id } = req.params;
-
-    // 先删除步骤
-    const { error: stepsError } = await client
-      .from('followup_steps')
-      .delete()
-      .eq('patient_id', parseInt(id));
+    const { error: stepsError } = await client.from('followup_steps').delete().eq('patient_id', parseInt(id));
     if (stepsError) throw new Error(`删除步骤失败: ${stepsError.message}`);
-
-    // 再删除患者
     const { data: patient, error: patientError } = await client
-      .from('patients')
-      .delete()
-      .eq('id', parseInt(id))
-      .select()
-      .single();
+      .from('patients').delete().eq('id', parseInt(id)).select().single();
     if (patientError) throw new Error(`删除患者失败: ${patientError.message}`);
-
     res.json({ message: 'Patient deleted', patient });
   } catch (err) {
     console.error('Error deleting patient:', err);
@@ -247,27 +359,61 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// PUT /api/v1/patients/:patientId/steps/:stepId - 更新随访步骤
+// PUT /api/v1/patients/:patientId/steps/:stepId - 更新随访步骤（完成时自动调整后续步骤）
 router.put('/:patientId/steps/:stepId', async (req, res) => {
   try {
     const client = getSupabaseClient();
-    const { stepId } = req.params;
+    const { patientId, stepId } = req.params;
     const { completed_date, scheduled_date, notes } = req.body;
 
+    // 先更新当前步骤
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (completed_date !== undefined) updateData.completed_date = completed_date;
     if (scheduled_date !== undefined) updateData.scheduled_date = scheduled_date;
     if (notes !== undefined) updateData.notes = notes;
 
     const { data: step, error } = await client
-      .from('followup_steps')
-      .update(updateData)
-      .eq('id', parseInt(stepId))
-      .select()
-      .single();
+      .from('followup_steps').update(updateData).eq('id', parseInt(stepId)).select().single();
     if (error) throw new Error(`更新步骤失败: ${error.message}`);
 
-    res.json(step);
+    // 如果标记完成且完成日期与计划日期不同，自动调整后续步骤
+    if (completed_date && step) {
+      const currentStep = step;
+      const plannedDate = parseDateBJ(currentStep.scheduled_date);
+      const actualDate = parseDateBJ(completed_date);
+      const diffDays = Math.round((actualDate.getTime() - plannedDate.getTime()) / 86400000);
+
+      if (diffDays !== 0) {
+        // 获取后续未完成的步骤
+        const { data: laterSteps, error: laterError } = await client
+          .from('followup_steps')
+          .select('*')
+          .eq('patient_id', parseInt(patientId))
+          .gt('step_number', currentStep.step_number)
+          .is('completed_date', null)
+          .order('step_number', { ascending: true });
+        if (laterError) throw new Error(`查询后续步骤失败: ${laterError.message}`);
+
+        // 调整后续步骤的计划日期
+        if (laterSteps && laterSteps.length > 0) {
+          for (const laterStep of laterSteps) {
+            const oldDate = parseDateBJ(laterStep.scheduled_date);
+            const newDate = new Date(oldDate.getTime() + diffDays * 86400000);
+            await client
+              .from('followup_steps')
+              .update({ scheduled_date: formatDateBJ(newDate), updated_at: new Date().toISOString() })
+              .eq('id', laterStep.id);
+          }
+        }
+      }
+    }
+
+    // 返回更新后的完整步骤列表
+    const { data: allSteps } = await client
+      .from('followup_steps').select('*').eq('patient_id', parseInt(patientId))
+      .order('step_number', { ascending: true });
+
+    res.json({ step, allSteps: allSteps || [] });
   } catch (err) {
     console.error('Error updating step:', err);
     res.status(500).json({ error: 'Failed to update step' });

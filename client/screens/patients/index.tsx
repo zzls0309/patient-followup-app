@@ -170,10 +170,26 @@ export default function PatientsScreen() {
   return (
     <Screen safeAreaEdges={['left', 'right']}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.headerTitle}>患者管理</Text>
-        <Text style={styles.headerSubtitle}>
-          共 {patients.length} 位患者
-        </Text>
+        <View>
+          <Text style={styles.headerTitle}>患者管理</Text>
+          <Text style={styles.headerSubtitle}>
+            共 {patients.length} 位患者
+          </Text>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.importButton}
+            onPress={() => router.push('/import-patients')}
+          >
+            <FontAwesome6 name="file-import" size={16} color="#059669" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => router.push('/add-patient')}
+          >
+            <FontAwesome6 name="plus" size={16} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -223,6 +239,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 20,
     backgroundColor: '#F0F0F3',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  importButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 28,
@@ -233,6 +265,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#636E72',
     marginTop: 4,
+  },
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#059669',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   listContent: {
     paddingHorizontal: 24,
