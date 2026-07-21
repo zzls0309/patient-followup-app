@@ -15,6 +15,7 @@ import { useFocusEffect } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   getNotificationsEnabled,
   setNotificationsEnabled,
@@ -31,6 +32,13 @@ const STEP_LABELS: Record<string, string> = {
   treatment_2: '第二次治疗',
   treatment_3: '第三次治疗',
   photo: '拍照随访',
+};
+
+const STEP_COLORS: Record<string, string> = {
+  treatment_1: '#059669',
+  treatment_2: '#0EA5E9',
+  treatment_3: '#8B5CF6',
+  photo: '#F59E0B',
 };
 
 interface Reminder {
@@ -63,11 +71,6 @@ export default function RemindersScreen() {
 
   const fetchReminders = useCallback(async () => {
     try {
-      /**
-       * 服务端文件：server/src/routes/patients.ts
-       * 接口：GET /api/v1/patients/reminders/upcoming
-       * 无参数（返回2天内到期和已逾期的步骤）
-       */
       const response = await fetch(`${API_BASE}/patients/reminders/upcoming`);
       const data = await response.json();
       setReminders(data);
@@ -137,81 +140,85 @@ export default function RemindersScreen() {
     const daysUntil = getDaysUntil(item.scheduled_date);
     const isOverdue = daysUntil < 0;
     const isToday = daysUntil === 0;
+    const stepColor = STEP_COLORS[item.step_type] || '#059669';
 
     return (
       <TouchableOpacity
-        activeOpacity={0.7}
+        activeOpacity={0.75}
         onPress={() =>
           router.push(`/patient-detail`, { patientId: item.patient_id })
         }
-        style={styles.cardOuter}
+        style={styles.card}
       >
-        <View style={styles.cardInner}>
-          <View style={styles.reminderHeader}>
-            <View style={styles.patientRow}>
-              <View
-                style={[
-                  styles.iconContainer,
-                  {
-                    backgroundColor: isOverdue
-                      ? 'rgba(239,68,68,0.12)'
-                      : 'rgba(5,150,105,0.12)',
-                  },
-                ]}
-              >
-                <FontAwesome6
-                  name={isOverdue ? 'triangle-exclamation' : 'bell'}
-                  size={18}
-                  color={isOverdue ? '#EF4444' : '#059669'}
-                />
-              </View>
-              <View style={styles.reminderInfo}>
-                <Text style={styles.patientName}>{item.patient_name}</Text>
-                <Text style={styles.stepLabel}>
+        <View style={styles.cardHeader}>
+          <View style={styles.patientRow}>
+            <View
+              style={[
+                styles.iconContainer,
+                { backgroundColor: isOverdue ? '#FEE2E2' : '#E8F5E9' },
+              ]}
+            >
+              <FontAwesome6
+                name={isOverdue ? 'triangle-exclamation' : 'bell'}
+                size={18}
+                color={isOverdue ? '#DC2626' : '#059669'}
+              />
+            </View>
+            <View style={styles.reminderInfo}>
+              <Text style={styles.patientName}>{item.patient_name}</Text>
+              <View style={[styles.stepBadge, { backgroundColor: stepColor + '18' }]}>
+                <Text style={[styles.stepLabel, { color: stepColor }]}>
                   {STEP_LABELS[item.step_type] || `步骤${item.step_number}`}
                 </Text>
               </View>
             </View>
-            <View
+          </View>
+          <View
+            style={[
+              styles.dayBadge,
+              {
+                backgroundColor: isOverdue
+                  ? '#FEE2E2'
+                  : isToday
+                    ? '#FEF3C7'
+                    : '#E8F5E9',
+              },
+            ]}
+          >
+            <Text
               style={[
-                styles.dayBadge,
+                styles.dayText,
                 {
-                  backgroundColor: isOverdue
-                    ? 'rgba(239,68,68,0.10)'
+                  color: isOverdue
+                    ? '#DC2626'
                     : isToday
-                      ? 'rgba(245,158,11,0.10)'
-                      : 'rgba(5,150,105,0.10)',
+                      ? '#D97706'
+                      : '#059669',
                 },
               ]}
             >
-              <Text
-                style={[
-                  styles.dayText,
-                  {
-                    color: isOverdue
-                      ? '#EF4444'
-                      : isToday
-                        ? '#F59E0B'
-                        : '#059669',
-                  },
-                ]}
-              >
-                {isOverdue
-                  ? `逾期${Math.abs(daysUntil)}天`
-                  : isToday
-                    ? '今天'
-                    : `${daysUntil}天后`}
-              </Text>
-            </View>
+              {isOverdue
+                ? `逾期${Math.abs(daysUntil)}天`
+                : isToday
+                  ? '今天'
+                  : `${daysUntil}天后`}
+            </Text>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.reminderFooter}>
-            <View style={styles.dateInfo}>
-              <FontAwesome6 name="calendar" size={12} color="#636E72" />
-              <Text style={styles.dateText}>{item.scheduled_date}</Text>
-            </View>
-            <Text style={styles.actionHint}>点击查看详情</Text>
+        </View>
+
+        <View style={styles.cardFooter}>
+          <View style={styles.dateRow}>
+            <FontAwesome6 name="calendar" size={13} color="#94A3B8" />
+            <Text style={styles.dateText}>
+              {new Date(item.scheduled_date).toLocaleDateString('zh-CN')}
+            </Text>
           </View>
+          {item.patient_phone ? (
+            <View style={styles.phoneRow}>
+              <FontAwesome6 name="phone" size={13} color="#94A3B8" />
+              <Text style={styles.phoneText}>{item.patient_phone}</Text>
+            </View>
+          ) : null}
         </View>
       </TouchableOpacity>
     );
@@ -229,100 +236,103 @@ export default function RemindersScreen() {
 
   return (
     <Screen safeAreaEdges={['left', 'right']}>
+      <LinearGradient
+        colors={['#059669', '#10B981', '#34D399']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.headerGradient, { paddingTop: insets.top + 16 }]}
+      >
+        <Text style={styles.headerTitle}>随访提醒</Text>
+        <Text style={styles.headerSubtitle}>
+          {reminders.length > 0
+            ? `${reminders.length} 项待办提醒`
+            : '暂无待办提醒'}
+        </Text>
+      </LinearGradient>
+
+      <View style={styles.settingsCard}>
+        <View style={styles.settingRow}>
+          <View style={styles.settingLeft}>
+            <View style={[styles.settingIcon, { backgroundColor: '#E8F5E9' }]}>
+              <FontAwesome6 name="bell" size={16} color="#059669" />
+            </View>
+            <View>
+              <Text style={styles.settingLabel}>通知提醒</Text>
+              <Text style={styles.settingDesc}>提前2天开始提醒</Text>
+            </View>
+          </View>
+          <Switch
+            value={notificationsEnabled}
+            onValueChange={handleToggleNotifications}
+            trackColor={{ true: '#059669', false: '#CBD5E1' }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+        {notificationsEnabled && (
+          <View style={styles.settingDivider}>
+            <TouchableOpacity style={styles.settingRow} onPress={handleTimeChange}>
+              <View style={styles.settingLeft}>
+                <View style={[styles.settingIcon, { backgroundColor: '#FEF3C7' }]}>
+                  <FontAwesome6 name="clock" size={16} color="#D97706" />
+                </View>
+                <Text style={styles.settingLabel}>提醒时间</Text>
+              </View>
+              <View style={styles.timeBadge}>
+                <Text style={styles.timeText}>{reminderTime}</Text>
+                <FontAwesome6 name="chevron-right" size={12} color="#94A3B8" />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.settingRow, { marginTop: 8 }]}
+              onPress={handleTestNotification}
+            >
+              <View style={styles.settingLeft}>
+                <View style={[styles.settingIcon, { backgroundColor: '#EDE9FE' }]}>
+                  <FontAwesome6 name="paper-plane" size={14} color="#8B5CF6" />
+                </View>
+                <Text style={styles.settingLabel}>发送测试通知</Text>
+              </View>
+              <View style={styles.testBtn}>
+                <Text style={styles.testBtnText}>发送</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
       <FlatList
         data={[...overdueReminders, ...upcomingReminders]}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderReminderItem}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
         contentContainerStyle={[
           styles.listContent,
           reminders.length === 0 && styles.emptyContainer,
         ]}
-        ListHeaderComponent={
-          <View>
-            <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-              <Text style={styles.headerTitle}>随访提醒</Text>
-              <Text style={styles.headerSubtitle}>
-                提前2天提醒 · 共 {reminders.length} 条待办
-              </Text>
-            </View>
-
-            {/* Notification Settings */}
-            <View style={styles.settingsCard}>
-              <View style={styles.settingRow}>
-                <View style={styles.settingLeft}>
-                  <View style={[styles.settingIcon, { backgroundColor: 'rgba(5,150,105,0.12)' }]}>
-                    <FontAwesome6 name="bell" size={14} color="#059669" />
-                  </View>
-                  <View>
-                    <Text style={styles.settingTitle}>通知提醒</Text>
-                    <Text style={styles.settingDesc}>每日 {reminderTime} 检查并提醒</Text>
-                  </View>
-                </View>
-                <Switch
-                  value={notificationsEnabled}
-                  onValueChange={handleToggleNotifications}
-                  trackColor={{ false: '#DFE6E9', true: '#B2DFDB' }}
-                  thumbColor={notificationsEnabled ? '#059669' : '#B2BEC3'}
-                />
-              </View>
-
-              {notificationsEnabled && (
-                <>
-                  <TouchableOpacity style={styles.settingRow} onPress={handleTimeChange}>
-                    <View style={styles.settingLeft}>
-                      <View style={[styles.settingIcon, { backgroundColor: 'rgba(249,115,22,0.12)' }]}>
-                        <FontAwesome6 name="clock" size={14} color="#F97316" />
-                      </View>
-                      <View>
-                        <Text style={styles.settingTitle}>提醒时间</Text>
-                        <Text style={styles.settingDesc}>北京时间 {reminderTime}</Text>
-                      </View>
-                    </View>
-                    <FontAwesome6 name="chevron-right" size={14} color="#B2BEC3" />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity style={styles.settingRow} onPress={handleTestNotification}>
-                    <View style={styles.settingLeft}>
-                      <View style={[styles.settingIcon, { backgroundColor: 'rgba(99,102,241,0.12)' }]}>
-                        <FontAwesome6 name="paper-plane" size={14} color="#6366F1" />
-                      </View>
-                      <Text style={styles.settingTitle}>发送测试通知</Text>
-                    </View>
-                    <FontAwesome6 name="chevron-right" size={14} color="#B2BEC3" />
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-
-            {overdueReminders.length > 0 && (
-              <View style={styles.sectionHeader}>
-                <View style={[styles.sectionDot, { backgroundColor: '#EF4444' }]} />
-                <Text style={styles.sectionTitle}>
-                  已逾期 ({overdueReminders.length})
-                </Text>
-              </View>
-            )}
-          </View>
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#059669"
+          />
         }
-        ListFooterComponent={
-          upcomingReminders.length > 0 ? (
-            <View style={[styles.sectionHeader, { marginTop: 16 }]}>
-              <View style={[styles.sectionDot, { backgroundColor: '#059669' }]} />
-              <Text style={styles.sectionTitle}>
-                即将到来 ({upcomingReminders.length})
-              </Text>
-            </View>
+        ListHeaderComponent={
+          overdueReminders.length > 0 ? (
+            <Text style={styles.sectionTitle}>
+              <FontAwesome6 name="triangle-exclamation" size={14} color="#DC2626" /> 已逾期
+            </Text>
+          ) : upcomingReminders.length > 0 ? (
+            <Text style={styles.sectionTitle}>
+              <FontAwesome6 name="calendar-check" size={14} color="#059669" /> 即将到来
+            </Text>
           ) : null
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
-              <FontAwesome6 name="circle-check" size={40} color="#059669" />
+              <FontAwesome6 name="calendar-check" size={36} color="#059669" />
             </View>
-            <Text style={styles.emptyTitle}>暂无待办随访</Text>
-            <Text style={styles.emptyDesc}>所有随访任务均已安排或完成</Text>
+            <Text style={styles.emptyTitle}>暂无待办提醒</Text>
+            <Text style={styles.emptyDesc}>所有随诊安排都在掌控中</Text>
           </View>
         }
       />
@@ -336,175 +346,206 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    paddingHorizontal: 24,
+  headerGradient: {
     paddingBottom: 20,
-    backgroundColor: '#F0F0F3',
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    color: '#2D3436',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#636E72',
+    color: 'rgba(255,255,255,0.85)',
     marginTop: 4,
+    fontWeight: '500',
   },
   settingsCard: {
-    backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 20,
-    padding: 4,
+    marginTop: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
     shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(5,150,105,0.06)',
   },
   settingRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    alignItems: 'center',
   },
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    flex: 1,
   },
   settingIcon: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  settingTitle: {
-    fontSize: 14,
+  settingLabel: {
+    fontSize: 15,
     fontWeight: '600',
-    color: '#2D3436',
+    color: '#1E293B',
   },
   settingDesc: {
     fontSize: 12,
-    color: '#636E72',
-    marginTop: 2,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  settingDivider: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  timeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  timeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  testBtn: {
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  testBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#8B5CF6',
   },
   listContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 100,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  sectionDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#2D3436',
-  },
-  cardOuter: {
-    marginHorizontal: 20,
+    color: '#1E293B',
     marginBottom: 12,
-    borderRadius: 20,
-    backgroundColor: '#F0F0F3',
-    padding: 2,
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    gap: 6,
   },
-  cardInner: {
+  card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
-    padding: 16,
+    padding: 18,
+    marginBottom: 12,
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(5,150,105,0.06)',
   },
-  reminderHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 14,
   },
   patientRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    flex: 1,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
   reminderInfo: {
-    gap: 2,
+    marginLeft: 12,
+    flex: 1,
   },
   patientName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2D3436',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  stepBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
   },
   stepLabel: {
-    fontSize: 13,
-    color: '#636E72',
+    fontSize: 12,
+    fontWeight: '600',
   },
   dayBadge: {
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
   dayText: {
     fontSize: 12,
     fontWeight: '700',
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#F0F0F3',
-    marginVertical: 12,
-  },
-  reminderFooter: {
+  cardFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
-  dateInfo: {
+  dateRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
   dateText: {
     fontSize: 13,
-    color: '#636E72',
+    color: '#64748B',
   },
-  actionHint: {
-    fontSize: 12,
-    color: '#B2BEC3',
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  phoneText: {
+    fontSize: 13,
+    color: '#64748B',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 60,
   },
   emptyIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 24,
-    backgroundColor: 'rgba(5,150,105,0.12)',
+    backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -512,12 +553,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2D3436',
-    marginBottom: 8,
+    color: '#1E293B',
+    marginBottom: 6,
   },
   emptyDesc: {
     fontSize: 14,
-    color: '#636E72',
-    textAlign: 'center',
+    color: '#94A3B8',
   },
 });

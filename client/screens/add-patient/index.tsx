@@ -14,6 +14,7 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { Screen } from '@/components/Screen';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const API_BASE = `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1`;
 
@@ -40,11 +41,6 @@ export default function AddPatientScreen() {
 
     setSubmitting(true);
     try {
-      /**
-       * 服务端文件：server/src/routes/patients.ts
-       * 接口：POST /api/v1/patients
-       * Body 参数：name: string, phone: string, gender: string, age: number, notes: string, firstTreatmentDate: string (YYYY-MM-DD)
-       */
       const response = await fetch(`${API_BASE}/patients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -81,13 +77,20 @@ export default function AddPatientScreen() {
 
   return (
     <Screen safeAreaEdges={['left', 'right']}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <FontAwesome6 name="chevron-left" size={20} color="#2D3436" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>添加患者</Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <LinearGradient
+        colors={['#059669', '#10B981', '#34D399']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.headerGradient, { paddingTop: insets.top + 12 }]}
+      >
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
+            <FontAwesome6 name="chevron-left" size={18} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>添加患者</Text>
+          <View style={{ width: 40 }} />
+        </View>
+      </LinearGradient>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -99,74 +102,67 @@ export default function AddPatientScreen() {
         >
           <Text style={styles.sectionTitle}>基本信息</Text>
 
-          <View style={styles.fieldOuter}>
-            <View style={styles.fieldInner}>
-              <Text style={styles.fieldLabel}>姓名 *</Text>
-              <TextInput
-                style={styles.fieldInput}
-                placeholder="请输入患者姓名"
-                placeholderTextColor="#B2BEC3"
-                value={name}
-                onChangeText={setName}
-              />
-            </View>
+          <View style={styles.fieldCard}>
+            <Text style={styles.fieldLabel}>姓名 *</Text>
+            <TextInput
+              style={styles.fieldInput}
+              placeholder="请输入患者姓名"
+              placeholderTextColor="#CBD5E1"
+              value={name}
+              onChangeText={setName}
+            />
           </View>
 
           <View style={styles.rowContainer}>
-            <View style={[styles.fieldOuter, { flex: 1, marginRight: 8 }]}>
-              <View style={styles.fieldInner}>
-                <Text style={styles.fieldLabel}>性别</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  placeholder="男/女"
-                  placeholderTextColor="#B2BEC3"
-                  value={gender}
-                  onChangeText={setGender}
-                />
-              </View>
-            </View>
-            <View style={[styles.fieldOuter, { flex: 1, marginLeft: 8 }]}>
-              <View style={styles.fieldInner}>
-                <Text style={styles.fieldLabel}>年龄</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  placeholder="岁"
-                  placeholderTextColor="#B2BEC3"
-                  value={age}
-                  onChangeText={setAge}
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.fieldOuter}>
-            <View style={styles.fieldInner}>
-              <Text style={styles.fieldLabel}>联系电话</Text>
+            <View style={[styles.fieldCard, { flex: 1, marginRight: 10 }]}>
+              <Text style={styles.fieldLabel}>性别</Text>
               <TextInput
                 style={styles.fieldInput}
-                placeholder="请输入手机号"
-                placeholderTextColor="#B2BEC3"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
+                placeholder="男/女"
+                placeholderTextColor="#CBD5E1"
+                value={gender}
+                onChangeText={setGender}
+              />
+            </View>
+            <View style={[styles.fieldCard, { flex: 1, marginLeft: 10 }]}>
+              <Text style={styles.fieldLabel}>年龄</Text>
+              <TextInput
+                style={styles.fieldInput}
+                placeholder="岁"
+                placeholderTextColor="#CBD5E1"
+                value={age}
+                onChangeText={setAge}
+                keyboardType="numeric"
               />
             </View>
           </View>
 
-          <Text style={[styles.sectionTitle, { marginTop: 28 }]}>随访计划</Text>
+          <View style={styles.fieldCard}>
+            <Text style={styles.fieldLabel}>联系电话</Text>
+            <TextInput
+              style={styles.fieldInput}
+              placeholder="请输入手机号"
+              placeholderTextColor="#CBD5E1"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
+          </View>
 
-          <View style={styles.fieldOuter}>
-            <View style={styles.fieldInner}>
-              <Text style={styles.fieldLabel}>第一次治疗日期 *</Text>
-              <TextInput
-                style={styles.fieldInput}
-                placeholder={`YYYY-MM-DD，例如：${getTomorrowDate()}`}
-                placeholderTextColor="#B2BEC3"
-                value={firstTreatmentDate}
-                onChangeText={setFirstTreatmentDate}
-              />
-            </View>
+          <View style={styles.sectionDivider}>
+            <FontAwesome6 name="calendar-plus" size={18} color="#059669" />
+            <Text style={styles.sectionTitle}>随访计划</Text>
+          </View>
+
+          <View style={styles.fieldCard}>
+            <Text style={styles.fieldLabel}>第一次治疗日期 *</Text>
+            <TextInput
+              style={styles.fieldInput}
+              placeholder={`YYYY-MM-DD，例如：${getTomorrowDate()}`}
+              placeholderTextColor="#CBD5E1"
+              value={firstTreatmentDate}
+              onChangeText={setFirstTreatmentDate}
+            />
           </View>
 
           <View style={styles.hintCard}>
@@ -176,19 +172,17 @@ export default function AddPatientScreen() {
             </Text>
           </View>
 
-          <Text style={[styles.sectionTitle, { marginTop: 28 }]}>备注</Text>
+          <Text style={[styles.sectionTitle, { marginTop: 24 }]}>备注</Text>
 
-          <View style={styles.fieldOuter}>
-            <View style={[styles.fieldInner, { minHeight: 100 }]}>
-              <TextInput
-                style={[styles.fieldInput, { minHeight: 80, textAlignVertical: 'top' }]}
-                placeholder="病情备注（可选）"
-                placeholderTextColor="#B2BEC3"
-                value={notes}
-                onChangeText={setNotes}
-                multiline
-              />
-            </View>
+          <View style={[styles.fieldCard, { minHeight: 100 }]}>
+            <TextInput
+              style={[styles.fieldInput, { minHeight: 80, textAlignVertical: 'top' }]}
+              placeholder="病情备注（可选）"
+              placeholderTextColor="#CBD5E1"
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+            />
           </View>
 
           <TouchableOpacity
@@ -197,9 +191,14 @@ export default function AddPatientScreen() {
             disabled={submitting}
             style={[styles.submitBtn, submitting && { opacity: 0.6 }]}
           >
-            <Text style={styles.submitBtnText}>
-              {submitting ? '创建中...' : '确认添加'}
-            </Text>
+            {submitting ? (
+              <Text style={styles.submitBtnText}>创建中...</Text>
+            ) : (
+              <>
+                <FontAwesome6 name="check" size={16} color="#fff" />
+                <Text style={styles.submitBtnText}>确认添加</Text>
+              </>
+            )}
           </TouchableOpacity>
 
           <View style={{ height: 40 }} />
@@ -210,71 +209,79 @@ export default function AddPatientScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
+  headerGradient: {
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingBottom: 16,
-    backgroundColor: '#F0F0F3',
   },
-  backBtn: {
+  headerBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E8E8EB',
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.20)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2D3436',
+    color: '#FFFFFF',
   },
   formContainer: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingTop: 24,
     paddingBottom: 40,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#2D3436',
+    color: '#1E293B',
+    marginBottom: 12,
+  },
+  sectionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 24,
     marginBottom: 12,
   },
   rowContainer: {
     flexDirection: 'row',
   },
-  fieldOuter: {
-    shadowColor: '#D1D9E6',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  fieldInner: {
-    backgroundColor: '#E8E8EB',
-    borderRadius: 16,
+  fieldCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
     padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.6)',
+    borderColor: '#F1F5F9',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
   },
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#636E72',
-    marginBottom: 6,
+    color: '#64748B',
+    marginBottom: 8,
   },
   fieldInput: {
-    fontSize: 15,
-    color: '#2D3436',
+    fontSize: 16,
+    color: '#1E293B',
     padding: 0,
+    fontWeight: '500',
   },
   hintCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(5,150,105,0.08)',
+    backgroundColor: '#E8F5E9',
     borderRadius: 12,
     padding: 14,
     gap: 10,
@@ -285,22 +292,24 @@ const styles = StyleSheet.create({
     color: '#059669',
     flex: 1,
     lineHeight: 18,
+    fontWeight: '500',
   },
   submitBtn: {
-    backgroundColor: '#059669',
-    borderRadius: 9999,
-    paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#059669',
+    borderRadius: 16,
+    paddingVertical: 16,
     marginTop: 24,
     shadowColor: '#059669',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
-    elevation: 6,
   },
   submitBtnText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
     color: '#FFFFFF',
   },

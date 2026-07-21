@@ -7,12 +7,14 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const API_BASE = `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1`;
 
@@ -29,13 +31,6 @@ interface Patient {
   created_at: string;
 }
 
-const STEP_LABELS: Record<string, string> = {
-  treatment_1: '第一次治疗',
-  treatment_2: '第二次治疗',
-  treatment_3: '第三次治疗',
-  photo: '拍照随访',
-};
-
 function getDaysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null;
   const today = new Date();
@@ -46,11 +41,11 @@ function getDaysUntil(dateStr: string | null): number | null {
 }
 
 function getStatusInfo(daysUntil: number | null) {
-  if (daysUntil === null) return { label: '已完成', color: '#00B894', bg: 'rgba(0,184,148,0.10)' };
-  if (daysUntil < 0) return { label: `逾期${Math.abs(daysUntil)}天`, color: '#EF4444', bg: 'rgba(239,68,68,0.10)' };
-  if (daysUntil === 0) return { label: '今天', color: '#F59E0B', bg: 'rgba(245,158,11,0.10)' };
-  if (daysUntil <= 3) return { label: `${daysUntil}天后`, color: '#F59E0B', bg: 'rgba(245,158,11,0.10)' };
-  return { label: `${daysUntil}天后`, color: '#059669', bg: 'rgba(5,150,105,0.10)' };
+  if (daysUntil === null) return { label: '已完成', color: '#059669', bg: '#E8F5E9' };
+  if (daysUntil < 0) return { label: `逾期${Math.abs(daysUntil)}天`, color: '#DC2626', bg: '#FEE2E2' };
+  if (daysUntil === 0) return { label: '今天', color: '#D97706', bg: '#FEF3C7' };
+  if (daysUntil <= 3) return { label: `${daysUntil}天后`, color: '#D97706', bg: '#FEF3C7' };
+  return { label: `${daysUntil}天后`, color: '#059669', bg: '#E8F5E9' };
 }
 
 export default function PatientsScreen() {
@@ -93,66 +88,67 @@ export default function PatientsScreen() {
 
     return (
       <TouchableOpacity
-        activeOpacity={0.7}
+        activeOpacity={0.75}
         onPress={() => router.push(`/patient-detail`, { patientId: item.id })}
-        style={styles.cardOuter}
+        style={styles.card}
       >
-        <View style={styles.cardInner}>
-          <View style={styles.cardHeader}>
-            <View style={styles.patientInfo}>
-              <View style={styles.avatarContainer}>
-                <FontAwesome6
-                  name="user"
-                  size={20}
-                  color="#059669"
-                />
-              </View>
-              <View style={styles.nameSection}>
-                <Text style={styles.patientName}>{item.name}</Text>
-                {item.phone ? (
+        <View style={styles.cardHeader}>
+          <View style={styles.patientInfo}>
+            <View style={styles.avatarContainer}>
+              <FontAwesome6 name="user" size={22} color="#059669" />
+            </View>
+            <View style={styles.nameSection}>
+              <Text style={styles.patientName}>{item.name}</Text>
+              {item.phone ? (
+                <View style={styles.phoneRow}>
+                  <FontAwesome6 name="phone" size={11} color="#94A3B8" />
                   <Text style={styles.patientPhone}>{item.phone}</Text>
-                ) : null}
-              </View>
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-              <Text style={[styles.statusText, { color: status.color }]}>
-                {status.label}
-              </Text>
+                </View>
+              ) : null}
             </View>
           </View>
-
-          <View style={styles.progressSection}>
-            <View style={styles.progressInfo}>
-              <Text style={styles.progressLabel}>随访进度</Text>
-              <Text style={styles.progressCount}>{completed}/{total}</Text>
-            </View>
-            <View style={styles.progressBarBg}>
-              <View
-                style={[
-                  styles.progressBarFill,
-                  { width: `${progress * 100}%` },
-                  progress >= 1 ? styles.progressBarComplete : null,
-                ]}
-              />
-            </View>
+          <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
+            <Text style={[styles.statusText, { color: status.color }]}>
+              {status.label}
+            </Text>
           </View>
-
-          {item.next_step_date && daysUntil !== null && completed < total ? (
-            <View style={styles.nextStepRow}>
-              <FontAwesome6 name="calendar-days" size={14} color="#636E72" />
-              <Text style={styles.nextStepText}>
-                下次随访：{new Date(item.next_step_date).toLocaleDateString('zh-CN')}
-              </Text>
-            </View>
-          ) : completed >= total ? (
-            <View style={styles.nextStepRow}>
-              <FontAwesome6 name="circle-check" size={14} color="#00B894" />
-              <Text style={[styles.nextStepText, { color: '#00B894' }]}>
-                全部随访已完成
-              </Text>
-            </View>
-          ) : null}
         </View>
+
+        <View style={styles.progressSection}>
+          <View style={styles.progressInfo}>
+            <Text style={styles.progressLabel}>随访进度</Text>
+            <Text style={styles.progressCount}>{completed}/{total}</Text>
+          </View>
+          <View style={styles.progressBarBg}>
+            <View
+              style={[
+                styles.progressBarFill,
+                { width: `${Math.max(progress * 100, 2)}%` },
+                progress >= 1 ? styles.progressBarComplete : null,
+              ]}
+            />
+          </View>
+        </View>
+
+        {item.next_step_date && daysUntil !== null && completed < total ? (
+          <View style={styles.nextStepRow}>
+            <View style={styles.nextStepIconWrap}>
+              <FontAwesome6 name="calendar-days" size={13} color="#64748B" />
+            </View>
+            <Text style={styles.nextStepText}>
+              下次随访：{new Date(item.next_step_date).toLocaleDateString('zh-CN')}
+            </Text>
+          </View>
+        ) : completed >= total ? (
+          <View style={styles.nextStepRow}>
+            <View style={[styles.nextStepIconWrap, { backgroundColor: '#E8F5E9' }]}>
+              <FontAwesome6 name="circle-check" size={13} color="#059669" />
+            </View>
+            <Text style={[styles.nextStepText, { color: '#059669', fontWeight: '600' }]}>
+              全部随访已完成
+            </Text>
+          </View>
+        ) : null}
       </TouchableOpacity>
     );
   };
@@ -169,28 +165,35 @@ export default function PatientsScreen() {
 
   return (
     <Screen safeAreaEdges={['left', 'right']}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <View>
-          <Text style={styles.headerTitle}>患者管理</Text>
-          <Text style={styles.headerSubtitle}>
-            共 {patients.length} 位患者
-          </Text>
+      <LinearGradient
+        colors={['#059669', '#10B981', '#34D399']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.headerGradient, { paddingTop: insets.top + 16 }]}
+      >
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>患者管理</Text>
+            <Text style={styles.headerSubtitle}>
+              共 {patients.length} 位患者
+            </Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => router.push('/import-patients')}
+            >
+              <FontAwesome6 name="file-import" size={18} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.headerBtn, styles.headerBtnPrimary]}
+              onPress={() => router.push('/add-patient')}
+            >
+              <FontAwesome6 name="plus" size={18} color="#059669" />
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.importButton}
-            onPress={() => router.push('/import-patients')}
-          >
-            <FontAwesome6 name="file-import" size={16} color="#059669" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => router.push('/add-patient')}
-          >
-            <FontAwesome6 name="plus" size={16} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      </LinearGradient>
 
       <FlatList
         data={patients}
@@ -210,21 +213,13 @@ export default function PatientsScreen() {
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
-              <FontAwesome6 name="user-plus" size={40} color="#059669" />
+              <FontAwesome6 name="user-plus" size={36} color="#059669" />
             </View>
             <Text style={styles.emptyTitle}>暂无患者</Text>
-            <Text style={styles.emptyDesc}>点击下方按钮添加第一位患者</Text>
+            <Text style={styles.emptyDesc}>点击右上角 + 添加第一位患者</Text>
           </View>
         }
       />
-
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => router.push('/add-patient')}
-        style={[styles.fab, { bottom: insets.bottom + 90 }]}
-      >
-        <FontAwesome6 name="plus" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
     </Screen>
   );
 }
@@ -235,71 +230,65 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
+  headerGradient: {
+    paddingBottom: 24,
     paddingHorizontal: 24,
-    paddingBottom: 20,
-    backgroundColor: '#F0F0F3',
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-  },
-  importButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#E8F5E9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    color: '#2D3436',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#636E72',
+    color: 'rgba(255,255,255,0.85)',
     marginTop: 4,
+    fontWeight: '500',
   },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#059669',
+  headerActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  headerBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.20)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  headerBtnPrimary: {
+    backgroundColor: '#FFFFFF',
+  },
   listContent: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 120,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 100,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cardOuter: {
-    shadowColor: '#D1D9E6',
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 0.7,
-    shadowRadius: 8,
-    borderRadius: 20,
-    marginBottom: 16,
-  },
-  cardInner: {
-    backgroundColor: '#F0F0F3',
+  card: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 20,
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: -4, height: -4 },
-    shadowOpacity: 0.9,
-    shadowRadius: 8,
+    marginBottom: 14,
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(5,150,105,0.06)',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -313,38 +302,43 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatarContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(5,150,105,0.12)',
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
   },
   nameSection: {
-    marginLeft: 12,
+    marginLeft: 14,
     flex: 1,
   },
   patientName: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#2D3436',
+    color: '#1E293B',
+  },
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 3,
   },
   patientPhone: {
     fontSize: 13,
-    color: '#636E72',
-    marginTop: 2,
+    color: '#94A3B8',
   },
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 9999,
+    borderRadius: 10,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   progressSection: {
-    marginBottom: 12,
+    marginBottom: 14,
   },
   progressInfo: {
     flexDirection: 'row',
@@ -354,35 +348,45 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 13,
-    color: '#636E72',
+    color: '#94A3B8',
+    fontWeight: '500',
   },
   progressCount: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#059669',
   },
   progressBarBg: {
-    height: 6,
-    backgroundColor: '#E8E8EB',
-    borderRadius: 3,
+    height: 8,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 4,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
     backgroundColor: '#059669',
-    borderRadius: 3,
+    borderRadius: 4,
   },
   progressBarComplete: {
-    backgroundColor: '#00B894',
+    backgroundColor: '#10B981',
   },
   nextStepRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  nextStepIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   nextStepText: {
     fontSize: 13,
-    color: '#636E72',
+    color: '#64748B',
+    fontWeight: '500',
   },
   emptyState: {
     alignItems: 'center',
@@ -392,8 +396,8 @@ const styles = StyleSheet.create({
   emptyIconContainer: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(5,150,105,0.10)',
+    borderRadius: 24,
+    backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -401,26 +405,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2D3436',
-    marginBottom: 8,
+    color: '#1E293B',
+    marginBottom: 6,
   },
   emptyDesc: {
     fontSize: 14,
-    color: '#636E72',
-  },
-  fab: {
-    position: 'absolute',
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#059669',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 8,
+    color: '#94A3B8',
   },
 });
