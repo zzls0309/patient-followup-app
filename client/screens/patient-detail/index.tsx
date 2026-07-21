@@ -54,7 +54,7 @@ function getDaysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-// 滚动列组件 - 使用 ScrollView 实现顺滑滚动
+// 滚动列组件 - 极简实现，避免回跳
 function ScrollColumn({
   items,
   initialIndex,
@@ -68,41 +68,27 @@ function ScrollColumn({
 }) {
   const scrollRef = useRef<ScrollView>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const isScrollingRef = useRef(false);
-  const hasInitializedRef = useRef(false);
+  const initializedRef = useRef(false);
 
-  // 只在组件首次挂载时滚动到初始位置
+  // 只在首次挂载时滚动到初始位置
   useEffect(() => {
-    if (!hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      // 延迟确保 ScrollView 已渲染
+    if (!initializedRef.current && initialIndex >= 0) {
+      initializedRef.current = true;
       setTimeout(() => {
         scrollRef.current?.scrollTo({ y: initialIndex * itemHeight, animated: false });
-      }, 50);
+      }, 100);
     }
-  }, [initialIndex, itemHeight]);
+  }, []); // 空依赖，只执行一次
 
   const handleMomentumScrollEnd = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset.y;
-    const index = Math.round(offsetY / itemHeight);
-    const clampedIndex = Math.max(0, Math.min(index, items.length - 1));
-    
-    setCurrentIndex(clampedIndex);
-    onSelect(items[clampedIndex]);
-    
-    // 精确对齐到整数位置
-    const snappedY = clampedIndex * itemHeight;
-    if (Math.abs(offsetY - snappedY) > 1) {
-      scrollRef.current?.scrollTo({ y: snappedY, animated: true });
-    }
+    const index = Math.max(0, Math.min(Math.round(offsetY / itemHeight), items.length - 1));
+    setCurrentIndex(index);
+    onSelect(items[index]);
   };
 
-  const handleScrollBeginDrag = () => {
-    isScrollingRef.current = true;
-  };
-
-  const visibleHeight = itemHeight * 5;
-  const paddingHeight = itemHeight * 2;
+  const visibleCount = 5;
+  const visibleHeight = itemHeight * visibleCount;
 
   return (
     <View style={{ height: visibleHeight, width: '100%' }}>
@@ -120,13 +106,14 @@ function ScrollColumn({
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1, width: '100%' }}
-        contentContainerStyle={{ paddingVertical: paddingHeight }}
+        contentContainerStyle={{ 
+          paddingTop: itemHeight * 2,
+          paddingBottom: itemHeight * 2,
+        }}
         showsVerticalScrollIndicator={false}
         snapToInterval={itemHeight}
         snapToAlignment="center"
-        decelerationRate="normal"
-        scrollEventThrottle={16}
-        onScrollBeginDrag={handleScrollBeginDrag}
+        decelerationRate="fast"
         onMomentumScrollEnd={handleMomentumScrollEnd}
         bounces={false}
         overScrollMode="never"

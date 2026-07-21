@@ -77,35 +77,27 @@ function TimePickerColumn({
   const scrollRef = useRef<ScrollView>(null);
   const itemHeight = 44;
   const [currentIndex, setCurrentIndex] = useState(values.indexOf(initialValue));
-  const hasInitializedRef = useRef(false);
+  const initializedRef = useRef(false);
 
-  // 只在组件首次挂载时滚动到初始位置
+  // 只在首次挂载时滚动到初始位置
   useEffect(() => {
-    if (!hasInitializedRef.current) {
-      hasInitializedRef.current = true;
+    if (!initializedRef.current) {
+      initializedRef.current = true;
       const initialIdx = values.indexOf(initialValue);
       if (initialIdx >= 0) {
         setTimeout(() => {
           scrollRef.current?.scrollTo({ y: initialIdx * itemHeight, animated: false });
-        }, 50);
+        }, 100);
       }
     }
-  }, [initialValue, values, itemHeight]);
+  }, []); // 空依赖，只执行一次
 
   // 滚动停止时自动保存
   const handleMomentumScrollEnd = (event: any) => {
     const y = event.nativeEvent.contentOffset.y;
-    const index = Math.round(y / itemHeight);
-    const clampedIndex = Math.max(0, Math.min(index, values.length - 1));
-    
-    setCurrentIndex(clampedIndex);
-    onSelect(values[clampedIndex]);
-    
-    // 精确对齐到整数位置
-    const snappedY = clampedIndex * itemHeight;
-    if (Math.abs(y - snappedY) > 1) {
-      scrollRef.current?.scrollTo({ y: snappedY, animated: true });
-    }
+    const index = Math.max(0, Math.min(Math.round(y / itemHeight), values.length - 1));
+    setCurrentIndex(index);
+    onSelect(values[index]);
   };
 
   return (
@@ -118,8 +110,7 @@ function TimePickerColumn({
         showsVerticalScrollIndicator={false}
         snapToInterval={itemHeight}
         snapToAlignment="center"
-        decelerationRate="normal"
-        scrollEventThrottle={16}
+        decelerationRate="fast"
         onMomentumScrollEnd={handleMomentumScrollEnd}
         bounces={false}
         overScrollMode="never"
