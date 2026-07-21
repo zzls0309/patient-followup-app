@@ -479,6 +479,7 @@ export default function RemindersScreen() {
                   // 滚动停止时自动保存
                   const timeStr = `${String(v).padStart(2, '0')}:${String(pickerMinute).padStart(2, '0')}`;
                   setReminderTime(timeStr);
+                  setRemTime(timeStr);
                 }}
                 label="时"
               />
@@ -491,6 +492,7 @@ export default function RemindersScreen() {
                   // 滚动停止时自动保存
                   const timeStr = `${String(pickerHour).padStart(2, '0')}:${String(v).padStart(2, '0')}`;
                   setReminderTime(timeStr);
+                  setRemTime(timeStr);
                 }}
                 label="分"
               />
