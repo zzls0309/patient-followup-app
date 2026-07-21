@@ -9,6 +9,8 @@ import {
   RefreshControl,
   Switch,
   Alert,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
@@ -59,6 +61,89 @@ function getDaysUntil(dateStr: string): number {
   target.setHours(0, 0, 0, 0);
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
+
+function TimePickerColumn({
+  values,
+  selectedValue,
+  onSelect,
+  label,
+}: {
+  values: number[];
+  selectedValue: number;
+  onSelect: (v: number) => void;
+  label: string;
+}) {
+  return (
+    <View style={tpStyles.column}>
+      <Text style={tpStyles.columnLabel}>{label}</Text>
+      <ScrollView
+        style={tpStyles.scrollView}
+        contentContainerStyle={tpStyles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={44}
+        decelerationRate="fast"
+      >
+        {values.map((v) => {
+          const isSelected = v === selectedValue;
+          return (
+            <TouchableOpacity
+              key={v}
+              style={[tpStyles.item, isSelected && tpStyles.itemSelected]}
+              activeOpacity={0.6}
+              onPress={() => onSelect(v)}
+            >
+              <Text
+                style={[
+                  tpStyles.itemText,
+                  isSelected && tpStyles.itemTextSelected,
+                ]}
+              >
+                {String(v).padStart(2, '0')}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+const tpStyles = StyleSheet.create({
+  column: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  columnLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginBottom: 8,
+  },
+  scrollView: {
+    height: 220,
+  },
+  scrollContent: {
+    paddingVertical: 88,
+  },
+  item: {
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  itemSelected: {
+    backgroundColor: '#E8F5E9',
+  },
+  itemText: {
+    fontSize: 22,
+    fontWeight: '500',
+    color: '#CBD5E1',
+  },
+  itemTextSelected: {
+    color: '#059669',
+    fontWeight: '700',
+  },
+});
 
 export default function RemindersScreen() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -114,19 +199,22 @@ export default function RemindersScreen() {
     setNotifEnabled(value);
   };
 
-  const handleTimeChange = () => {
-    const times = ['07:00', '08:00', '09:00', '10:00', '12:00', '14:00', '18:00', '20:00'];
-    Alert.alert(
-      '选择提醒时间',
-      '请选择每日提醒时间（北京时间）',
-      times.map(t => ({
-        text: t,
-        onPress: async () => {
-          await setReminderTime(t);
-          setRemTime(t);
-        },
-      }))
-    );
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [pickerHour, setPickerHour] = useState(8);
+  const [pickerMinute, setPickerMinute] = useState(0);
+
+  const handleTimeChange = async () => {
+    const [h, m] = reminderTime.split(':').map(Number);
+    setPickerHour(h);
+    setPickerMinute(m);
+    setShowTimePicker(true);
+  };
+
+  const handleConfirmTime = async () => {
+    const timeStr = `${String(pickerHour).padStart(2, '0')}:${String(pickerMinute).padStart(2, '0')}`;
+    await setReminderTime(timeStr);
+    setRemTime(timeStr);
+    setShowTimePicker(false);
   };
 
   const handleTestNotification = async () => {
@@ -336,6 +424,49 @@ export default function RemindersScreen() {
           </View>
         }
       />
+
+      {/* 自定义时间选择器 */}
+      <Modal
+        visible={showTimePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowTimePicker(false)}
+      >
+        <View style={styles.pickerOverlay}>
+          <TouchableOpacity
+            style={styles.pickerBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowTimePicker(false)}
+          />
+          <View style={styles.pickerContainer}>
+            <View style={styles.pickerHeader}>
+              <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                <Text style={styles.pickerCancel}>取消</Text>
+              </TouchableOpacity>
+              <Text style={styles.pickerTitle}>选择提醒时间</Text>
+              <TouchableOpacity onPress={handleConfirmTime}>
+                <Text style={styles.pickerConfirm}>确定</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.pickerBody}>
+              <TimePickerColumn
+                values={Array.from({ length: 24 }, (_, i) => i)}
+                selectedValue={pickerHour}
+                onSelect={setPickerHour}
+                label="时"
+              />
+              <Text style={styles.pickerColon}>:</Text>
+              <TimePickerColumn
+                values={Array.from({ length: 60 }, (_, i) => i)}
+                selectedValue={pickerMinute}
+                onSelect={setPickerMinute}
+                label="分"
+              />
+            </View>
+            <Text style={styles.pickerHint}>北京时间（UTC+8）</Text>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -559,5 +690,63 @@ const styles = StyleSheet.create({
   emptyDesc: {
     fontSize: 14,
     color: '#94A3B8',
+  },
+  pickerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  pickerContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+    paddingTop: 8,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  pickerCancel: {
+    fontSize: 16,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  pickerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  pickerConfirm: {
+    fontSize: 16,
+    color: '#059669',
+    fontWeight: '700',
+  },
+  pickerBody: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 16,
+  },
+  pickerColon: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#94A3B8',
+    marginTop: 24,
+  },
+  pickerHint: {
+    textAlign: 'center',
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 4,
   },
 });
