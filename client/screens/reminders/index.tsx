@@ -325,8 +325,11 @@ export default function RemindersScreen() {
   };
 
   const handleTestNotification = async () => {
-    const summary = await getReminderSummary(overdueReminders.length, upcomingReminders.length);
-    Alert.alert('随访提醒测试', summary + '\n\n应用内提醒功能正常！');
+    const summary = await getReminderSummary();
+    const testMessage = overdueReminders.length > 0 || upcomingReminders.length > 0
+      ? `您有 ${overdueReminders.length} 个逾期随诊，${upcomingReminders.length} 个即将到来的随诊。`
+      : '当前没有待处理的随诊任务。';
+    Alert.alert('随访提醒测试', `${summary}\n\n${testMessage}\n\n通知功能正常！`);
   };
 
   const overdueReminders = reminders.filter((r) => getDaysUntil(r.scheduled_date) < 0);

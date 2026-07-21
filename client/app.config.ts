@@ -67,6 +67,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
           "microphonePermission": `随访医生助手App需要访问麦克风以录制视频声音。`,
           "recordAudioAndroid": true
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#059669",
+          "sounds": []
+        }
       ]
     ],
     "experiments": {
