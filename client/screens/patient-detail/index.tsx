@@ -631,7 +631,7 @@ export default function PatientDetailScreen() {
 
       <DatePickerModal
         visible={datePickerVisible}
-        initialDate={pendingStep?.scheduled_date || new Date().toISOString().split('T')[0]}
+        initialDate={new Date().toISOString().split('T')[0]}
         onConfirm={handleDateConfirm}
         onCancel={() => {
           setDatePickerVisible(false);
