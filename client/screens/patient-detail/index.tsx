@@ -53,7 +53,7 @@ function getDaysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-// 滚动列组件
+// 滚动列组件 - 优化顺滑度
 function ScrollColumn({
   items,
   selectedIndex,
@@ -66,47 +66,90 @@ function ScrollColumn({
   itemHeight: number;
 }) {
   const scrollViewRef = useRef<ScrollView>(null);
-  const [scrollY, setScrollY] = useState(0);
+  const [scrollY, setScrollY] = useState(selectedIndex * itemHeight);
+  const isScrollingRef = useRef(false);
 
   useEffect(() => {
-    scrollViewRef.current?.scrollTo({ y: selectedIndex * itemHeight, animated: false });
-  }, []);
+    if (!isScrollingRef.current) {
+      scrollViewRef.current?.scrollTo({ y: selectedIndex * itemHeight, animated: false });
+    }
+  }, [selectedIndex, itemHeight]);
+
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setScrollY(offsetY);
+  };
 
   const handleMomentumScrollEnd = (event: any) => {
+    isScrollingRef.current = false;
     const offsetY = event.nativeEvent.contentOffset.y;
     const index = Math.round(offsetY / itemHeight);
     const clampedIndex = Math.max(0, Math.min(index, items.length - 1));
-    setScrollY(clampedIndex * itemHeight);
+    const snappedY = clampedIndex * itemHeight;
+    setScrollY(snappedY);
     onSelect(items[clampedIndex]);
+    // 确保精确对齐
+    scrollViewRef.current?.scrollTo({ y: snappedY, animated: true });
   };
 
+  const handleScrollBeginDrag = () => {
+    isScrollingRef.current = true;
+  };
+
+  const visibleHeight = itemHeight * 5;
+  const paddingHeight = itemHeight * 2;
+
   return (
-    <ScrollView
-      ref={scrollViewRef}
-      style={{ height: itemHeight * 5, width: '100%' }}
-      contentContainerStyle={{ paddingVertical: itemHeight * 2 }}
-      showsVerticalScrollIndicator={false}
-      snapToInterval={itemHeight}
-      snapToAlignment="center"
-      decelerationRate="fast"
-      onMomentumScrollEnd={handleMomentumScrollEnd}
-    >
-      {items.map((item, index) => {
-        const distance = Math.abs(index - Math.round(scrollY / itemHeight));
-        const opacity = Math.max(0.3, 1 - distance * 0.3);
-        const scale = Math.max(0.8, 1 - distance * 0.1);
-        return (
-          <View
-            key={item}
-            style={{ height: itemHeight, alignItems: 'center', justifyContent: 'center' }}
-          >
-            <Text style={{ fontSize: 22 * scale, opacity, fontWeight: distance === 0 ? '700' : '400', color: distance === 0 ? '#059669' : '#64748B' }}>
-              {String(item).padStart(2, '0')}
-            </Text>
-          </View>
-        );
-      })}
-    </ScrollView>
+    <View style={{ height: visibleHeight, width: '100%' }}>
+      {/* 选中高亮条 */}
+      <View style={{
+        position: 'absolute',
+        top: itemHeight * 2,
+        left: 0,
+        right: 0,
+        height: itemHeight,
+        backgroundColor: 'rgba(5, 150, 105, 0.08)',
+        borderRadius: 10,
+        zIndex: 0,
+      }} />
+      <ScrollView
+        ref={scrollViewRef}
+        style={{ flex: 1, width: '100%' }}
+        contentContainerStyle={{ paddingVertical: paddingHeight }}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={itemHeight}
+        snapToAlignment="center"
+        decelerationRate="normal"
+        scrollEventThrottle={16}
+        onScroll={handleScroll}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        bounces={false}
+        overScrollMode="never"
+      >
+        {items.map((item, index) => {
+          const distance = Math.abs((scrollY / itemHeight) - index);
+          const opacity = Math.max(0.25, 1 - distance * 0.35);
+          const scale = Math.max(0.75, 1 - distance * 0.12);
+          const isSelected = distance < 0.5;
+          return (
+            <View
+              key={item}
+              style={{ height: itemHeight, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Text style={{
+                fontSize: 24 * scale,
+                opacity,
+                fontWeight: isSelected ? '700' : '400',
+                color: isSelected ? '#059669' : '#64748B',
+              }}>
+                {String(item).padStart(2, '0')}
+              </Text>
+            </View>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }
 
