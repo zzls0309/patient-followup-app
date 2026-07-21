@@ -78,9 +78,27 @@ function TimePickerColumn({
   const itemHeight = 44;
   const initialIdx = values.indexOf(initialValue);
   const [currentIndex, setCurrentIndex] = useState(initialIdx >= 0 ? initialIdx : 0);
+  const initializedRef = useRef(false);
+
+  const visibleCount = 5;
+  const visibleHeight = itemHeight * visibleCount;
+  const paddingVertical = itemHeight * Math.floor(visibleCount / 2);
+
+  // 只在首次挂载时滚动到初始位置
+  useEffect(() => {
+    if (!initializedRef.current && initialIdx >= 0) {
+      initializedRef.current = true;
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ 
+          offset: initialIdx * itemHeight, 
+          animated: false 
+        });
+      }, 100);
+    }
+  }, []);
 
   // 滚动停止时自动保存
-  const handleScrollEndDrag = (event: any) => {
+  const handleMomentumScrollEnd = (event: any) => {
     const y = event.nativeEvent.contentOffset.y;
     const index = Math.max(0, Math.min(Math.round(y / itemHeight), values.length - 1));
     setCurrentIndex(index);
@@ -112,23 +130,39 @@ function TimePickerColumn({
   return (
     <View style={tpStyles.column}>
       <Text style={tpStyles.columnLabel}>{label}</Text>
-      <FlatList
-        ref={flatListRef}
-        data={values}
-        renderItem={renderItem}
-        keyExtractor={(item) => String(item)}
-        style={tpStyles.scrollView}
-        contentContainerStyle={tpStyles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        pagingEnabled
-        decelerationRate="fast"
-        onScrollEndDrag={handleScrollEndDrag}
-        bounces={false}
-        overScrollMode="never"
-        getItemLayout={getItemLayout}
-        initialScrollIndex={initialIdx >= 0 ? initialIdx : 0}
-        removeClippedSubviews={false}
-      />
+      <View style={{ height: visibleHeight, width: '100%' }}>
+        {/* 选中高亮条 */}
+        <View style={{
+          position: 'absolute',
+          top: paddingVertical,
+          left: 0,
+          right: 0,
+          height: itemHeight,
+          backgroundColor: 'rgba(5, 150, 105, 0.08)',
+          borderRadius: 10,
+          zIndex: 0,
+        }} />
+        <FlatList
+          ref={flatListRef}
+          data={values}
+          renderItem={renderItem}
+          keyExtractor={(item) => String(item)}
+          style={{ flex: 1, width: '100%' }}
+          contentContainerStyle={{ 
+            paddingTop: paddingVertical,
+            paddingBottom: paddingVertical,
+          }}
+          showsVerticalScrollIndicator={false}
+          snapToInterval={itemHeight}
+          decelerationRate="fast"
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          bounces={false}
+          overScrollMode="never"
+          getItemLayout={getItemLayout}
+          initialScrollIndex={initialIdx >= 0 ? initialIdx : 0}
+          removeClippedSubviews={false}
+        />
+      </View>
     </View>
   );
 }
@@ -144,20 +178,14 @@ const tpStyles = StyleSheet.create({
     color: '#94A3B8',
     marginBottom: 8,
   },
-  scrollView: {
-    height: 220,
-  },
-  scrollContent: {
-    paddingVertical: 88,
-  },
   item: {
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 10,
   },
   itemSelected: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: 'transparent',
   },
   itemText: {
     fontSize: 22,

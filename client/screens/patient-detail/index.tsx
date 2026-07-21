@@ -54,7 +54,7 @@ function getDaysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-// 滚动列组件 - 使用 FlatList + pagingEnabled，更可靠
+// 滚动列组件 - 使用 snapToInterval，正确的居中方案
 function ScrollColumn({
   items,
   initialIndex,
@@ -69,31 +69,32 @@ function ScrollColumn({
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const initializedRef = useRef(false);
-  const isScrollingRef = useRef(false);
+
+  const visibleCount = 5;
+  const visibleHeight = itemHeight * visibleCount;
+  // 选中项在中间，所以顶部需要填充 (visibleCount - 1) / 2 * itemHeight
+  const paddingVertical = itemHeight * Math.floor(visibleCount / 2);
 
   // 只在首次挂载时滚动到初始位置
   useEffect(() => {
     if (!initializedRef.current && initialIndex >= 0) {
       initializedRef.current = true;
       setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index: initialIndex, animated: false });
+        flatListRef.current?.scrollToOffset({ 
+          offset: initialIndex * itemHeight, 
+          animated: false 
+        });
       }, 100);
     }
   }, []);
 
-  const handleMomentumScrollEnd = () => {
-    isScrollingRef.current = false;
-  };
-
-  const handleScrollEndDrag = (event: any) => {
+  // 滚动结束时计算当前选中的索引
+  const handleMomentumScrollEnd = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset.y;
     const index = Math.max(0, Math.min(Math.round(offsetY / itemHeight), items.length - 1));
     setCurrentIndex(index);
     onSelect(items[index]);
   };
-
-  const visibleCount = 5;
-  const visibleHeight = itemHeight * visibleCount;
 
   const renderItem = useCallback(({ item, index }: { item: number; index: number }) => {
     const distance = Math.abs(index - currentIndex);
@@ -124,10 +125,10 @@ function ScrollColumn({
 
   return (
     <View style={{ height: visibleHeight, width: '100%' }}>
-      {/* 选中高亮条 */}
+      {/* 选中高亮条 - 在中间位置 */}
       <View style={{
         position: 'absolute',
-        top: itemHeight * 2,
+        top: paddingVertical,
         left: 0,
         right: 0,
         height: itemHeight,
@@ -142,15 +143,13 @@ function ScrollColumn({
         keyExtractor={(item) => String(item)}
         style={{ flex: 1, width: '100%' }}
         contentContainerStyle={{ 
-          paddingTop: itemHeight * 2,
-          paddingBottom: itemHeight * 2,
+          paddingTop: paddingVertical,
+          paddingBottom: paddingVertical,
         }}
         showsVerticalScrollIndicator={false}
-        pagingEnabled
+        snapToInterval={itemHeight}
         decelerationRate="fast"
         onMomentumScrollEnd={handleMomentumScrollEnd}
-        onScrollEndDrag={handleScrollEndDrag}
-        onScrollBeginDrag={() => { isScrollingRef.current = true; }}
         bounces={false}
         overScrollMode="never"
         getItemLayout={getItemLayout}
