@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -74,15 +74,33 @@ function TimePickerColumn({
   onSelect: (v: number) => void;
   label: string;
 }) {
+  const scrollRef = useRef<ScrollView>(null);
+  const itemHeight = 44;
+
+  // 滚动到当前选中值
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: selectedValue * itemHeight, animated: true });
+  }, [selectedValue]);
+
+  // 滚动停止时自动保存
+  const handleMomentumScrollEnd = (event: any) => {
+    const y = event.nativeEvent.contentOffset.y;
+    const index = Math.round(y / itemHeight);
+    const clampedIndex = Math.max(0, Math.min(index, values.length - 1));
+    onSelect(values[clampedIndex]);
+  };
+
   return (
     <View style={tpStyles.column}>
       <Text style={tpStyles.columnLabel}>{label}</Text>
       <ScrollView
+        ref={scrollRef}
         style={tpStyles.scrollView}
         contentContainerStyle={tpStyles.scrollContent}
         showsVerticalScrollIndicator={false}
-        snapToInterval={44}
+        snapToInterval={itemHeight}
         decelerationRate="fast"
+        onMomentumScrollEnd={handleMomentumScrollEnd}
       >
         {values.map((v) => {
           const isSelected = v === selectedValue;
@@ -91,7 +109,10 @@ function TimePickerColumn({
               key={v}
               style={[tpStyles.item, isSelected && tpStyles.itemSelected]}
               activeOpacity={0.6}
-              onPress={() => onSelect(v)}
+              onPress={() => {
+                scrollRef.current?.scrollTo({ y: v * itemHeight, animated: true });
+                onSelect(v);
+              }}
             >
               <Text
                 style={[
@@ -445,22 +466,32 @@ export default function RemindersScreen() {
                 <Text style={styles.pickerCancel}>取消</Text>
               </TouchableOpacity>
               <Text style={styles.pickerTitle}>选择提醒时间</Text>
-              <TouchableOpacity onPress={handleConfirmTime}>
-                <Text style={styles.pickerConfirm}>确定</Text>
+              <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+                <Text style={styles.pickerConfirm}>完成</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.pickerBody}>
               <TimePickerColumn
                 values={Array.from({ length: 24 }, (_, i) => i)}
                 selectedValue={pickerHour}
-                onSelect={setPickerHour}
+                onSelect={(v) => {
+                  setPickerHour(v);
+                  // 滚动停止时自动保存
+                  const timeStr = `${String(v).padStart(2, '0')}:${String(pickerMinute).padStart(2, '0')}`;
+                  setReminderTime(timeStr);
+                }}
                 label="时"
               />
               <Text style={styles.pickerColon}>:</Text>
               <TimePickerColumn
                 values={Array.from({ length: 60 }, (_, i) => i)}
                 selectedValue={pickerMinute}
-                onSelect={setPickerMinute}
+                onSelect={(v) => {
+                  setPickerMinute(v);
+                  // 滚动停止时自动保存
+                  const timeStr = `${String(pickerHour).padStart(2, '0')}:${String(v).padStart(2, '0')}`;
+                  setReminderTime(timeStr);
+                }}
                 label="分"
               />
             </View>
