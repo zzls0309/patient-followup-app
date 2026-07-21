@@ -178,6 +178,47 @@ router.get('/calendar', async (req, res) => {
   }
 });
 
+// GET /api/v1/patients/calendar/day?date=YYYY-MM-DD - 获取某日随诊患者详情
+router.get('/calendar/day', async (req, res) => {
+  try {
+    const client = getSupabaseClient();
+    const date = req.query.date as string;
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: 'Invalid date format, expected YYYY-MM-DD' });
+    }
+
+    const { data: steps, error: stepsError } = await client
+      .from('followup_steps')
+      .select('id, patient_id, step_type, scheduled_date')
+      .is('completed_date', null)
+      .eq('scheduled_date', date)
+      .order('step_number', { ascending: true });
+    if (stepsError) throw new Error(`查询失败: ${stepsError.message}`);
+    if (!steps || steps.length === 0) return res.json([]);
+
+    const patientIds = [...new Set(steps.map(s => s.patient_id))];
+    const { data: patients, error: patientsError } = await client
+      .from('patients')
+      .select('id, name, phone')
+      .in('id', patientIds);
+    if (patientsError) throw new Error(`查询患者失败: ${patientsError.message}`);
+    const patientMap = new Map((patients || []).map(p => [p.id, p]));
+
+    const result = steps.map(s => ({
+      patient_id: s.patient_id,
+      patient_name: patientMap.get(s.patient_id)?.name || '未知',
+      phone: patientMap.get(s.patient_id)?.phone || '',
+      step_type: s.step_type,
+      step_label: { treatment_1: '首次治疗', treatment_2: '二次治疗', treatment_3: '三次治疗', photo: '拍照随访' }[s.step_type] || s.step_type,
+      scheduled_date: s.scheduled_date,
+    }));
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching day patients:', err);
+    res.status(500).json({ error: 'Failed to fetch day patients' });
+  }
+});
+
 // POST /api/v1/patients/import - Excel批量导入患者
 router.post('/import', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });

@@ -112,9 +112,10 @@ export default function CalendarScreen() {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   const handleDayPress = (day: number) => {
-    const items = calendarData[day.toString()] || [];
+    const dateKey = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const items = calendarData[dateKey] || [];
     if (items.length > 0) {
-      router.push(`/patient-detail`, { patientId: items[0].patient_id });
+      router.push('/day-detail', { date: dateKey, count: items.length });
     }
   };
 
@@ -178,25 +179,8 @@ export default function CalendarScreen() {
                         </Text>
                       </View>
                       {items.length > 0 && (
-                        <View style={styles.annotationContainer}>
-                          {items.slice(0, 3).map((item, i) => (
-                            <View
-                              key={i}
-                              style={[
-                                styles.annotationBadge,
-                                { backgroundColor: STEP_COLORS[item.step_type] || '#059669' },
-                              ]}
-                            >
-                              <Text style={styles.annotationText} numberOfLines={1}>
-                                {item.patient_name.length > 2 ? item.patient_name.slice(0, 2) + '..' : item.patient_name}·{STEP_SHORT[item.step_type] || item.step_label}
-                              </Text>
-                            </View>
-                          ))}
-                          {items.length > 3 && (
-                            <View style={[styles.annotationBadge, { backgroundColor: '#94A3B8' }]}>
-                              <Text style={styles.annotationText}>+{items.length - 3}</Text>
-                            </View>
-                          )}
+                        <View style={styles.countBadge}>
+                          <Text style={styles.countText}>{items.length}人</Text>
                         </View>
                       )}
                     </>
@@ -325,19 +309,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
   },
-  annotationContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 2,
+  countBadge: {
+    backgroundColor: '#059669',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    marginTop: 2,
   },
-  annotationBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  annotationText: {
-    fontSize: 9,
+  countText: {
+    fontSize: 10,
     fontWeight: '700',
     color: '#FFFFFF',
   },
