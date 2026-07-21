@@ -158,25 +158,28 @@ export default function CalendarScreen() {
 
           <View style={styles.calendarGrid}>
             {cells.map((day, idx) => {
-              const items = day ? calendarData[day.toString()] || [] : [];
+              const dateKey = day ? `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
+              const items = dateKey ? calendarData[dateKey] || [] : [];
               const isToday = day === todayDate;
 
               return (
                 <TouchableOpacity
                   key={idx}
-                  style={[styles.dayCell, isToday && styles.todayCell]}
+                  style={[styles.dayCell, isToday && styles.todayCell, items.length > 0 && styles.hasEventCell]}
                   disabled={!day || items.length === 0}
                   activeOpacity={0.6}
                   onPress={() => day && handleDayPress(day)}
                 >
                   {day ? (
                     <>
-                      <Text style={[styles.dayText, isToday && styles.todayText]}>
-                        {day}
-                      </Text>
+                      <View style={[styles.dayNumberWrap, isToday && styles.todayNumberWrap]}>
+                        <Text style={[styles.dayText, isToday && styles.todayText]}>
+                          {day}
+                        </Text>
+                      </View>
                       {items.length > 0 && (
                         <View style={styles.annotationContainer}>
-                          {items.slice(0, 2).map((item, i) => (
+                          {items.slice(0, 3).map((item, i) => (
                             <View
                               key={i}
                               style={[
@@ -184,14 +187,14 @@ export default function CalendarScreen() {
                                 { backgroundColor: STEP_COLORS[item.step_type] || '#059669' },
                               ]}
                             >
-                              <Text style={styles.annotationText}>
-                                {STEP_SHORT[item.step_type] || item.step_label}
+                              <Text style={styles.annotationText} numberOfLines={1}>
+                                {item.patient_name.length > 2 ? item.patient_name.slice(0, 2) + '..' : item.patient_name}·{STEP_SHORT[item.step_type] || item.step_label}
                               </Text>
                             </View>
                           ))}
-                          {items.length > 2 && (
+                          {items.length > 3 && (
                             <View style={[styles.annotationBadge, { backgroundColor: '#94A3B8' }]}>
-                              <Text style={styles.annotationText}>+{items.length - 2}</Text>
+                              <Text style={styles.annotationText}>+{items.length - 3}</Text>
                             </View>
                           )}
                         </View>
@@ -319,7 +322,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   todayText: {
-    color: '#059669',
+    color: '#FFFFFF',
     fontWeight: '800',
   },
   annotationContainer: {
@@ -374,5 +377,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#64748B',
+  },
+  hasEventCell: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+  },
+  dayNumberWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  todayNumberWrap: {
+    backgroundColor: '#059669',
   },
 });
