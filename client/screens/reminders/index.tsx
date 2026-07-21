@@ -360,60 +360,72 @@ export default function RemindersScreen() {
         </Text>
       </LinearGradient>
 
-      <View style={styles.settingsCard}>
-        <View style={styles.settingRow}>
-          <View style={styles.settingLeft}>
-            <View style={[styles.settingIcon, { backgroundColor: '#E8F5E9' }]}>
-              <FontAwesome6 name="bell" size={16} color="#059669" />
-            </View>
-            <View>
-              <Text style={styles.settingLabel}>通知提醒</Text>
-              <Text style={styles.settingDesc}>提前2天开始提醒</Text>
-            </View>
-          </View>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={handleToggleNotifications}
-            trackColor={{ true: '#059669', false: '#CBD5E1' }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
-        {notificationsEnabled && (
-          <View style={styles.settingDivider}>
-            <TouchableOpacity style={styles.settingRow} onPress={handleTimeChange}>
-              <View style={styles.settingLeft}>
-                <View style={[styles.settingIcon, { backgroundColor: '#FEF3C7' }]}>
-                  <FontAwesome6 name="clock" size={16} color="#D97706" />
-                </View>
-                <Text style={styles.settingLabel}>提醒时间</Text>
-              </View>
-              <View style={styles.timeBadge}>
-                <Text style={styles.timeText}>{reminderTime}</Text>
-                <FontAwesome6 name="chevron-right" size={12} color="#94A3B8" />
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.settingRow, { marginTop: 8 }]}
-              onPress={handleTestNotification}
-            >
-              <View style={styles.settingLeft}>
-                <View style={[styles.settingIcon, { backgroundColor: '#EDE9FE' }]}>
-                  <FontAwesome6 name="paper-plane" size={14} color="#8B5CF6" />
-                </View>
-                <Text style={styles.settingLabel}>发送测试通知</Text>
-              </View>
-              <View style={styles.testBtn}>
-                <Text style={styles.testBtnText}>发送</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
       <FlatList
         data={[...overdueReminders, ...upcomingReminders]}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderReminderItem}
+        ListHeaderComponent={
+          <View>
+            <View style={styles.settingsCard}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingLeft}>
+                  <View style={[styles.settingIcon, { backgroundColor: '#E8F5E9' }]}>
+                    <FontAwesome6 name="bell" size={16} color="#059669" />
+                  </View>
+                  <View>
+                    <Text style={styles.settingLabel}>通知提醒</Text>
+                    <Text style={styles.settingDesc}>提前2天开始提醒</Text>
+                  </View>
+                </View>
+                <Switch
+                  value={notificationsEnabled}
+                  onValueChange={handleToggleNotifications}
+                  trackColor={{ true: '#059669', false: '#CBD5E1' }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+              {notificationsEnabled && (
+                <View style={styles.settingDivider}>
+                  <TouchableOpacity style={styles.settingRow} onPress={handleTimeChange}>
+                    <View style={styles.settingLeft}>
+                      <View style={[styles.settingIcon, { backgroundColor: '#FEF3C7' }]}>
+                        <FontAwesome6 name="clock" size={16} color="#D97706" />
+                      </View>
+                      <Text style={styles.settingLabel}>提醒时间</Text>
+                    </View>
+                    <View style={styles.timeBadge}>
+                      <Text style={styles.timeText}>{reminderTime}</Text>
+                      <FontAwesome6 name="chevron-right" size={12} color="#94A3B8" />
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.settingRow, { marginTop: 8 }]}
+                    onPress={handleTestNotification}
+                  >
+                    <View style={styles.settingLeft}>
+                      <View style={[styles.settingIcon, { backgroundColor: '#EDE9FE' }]}>
+                        <FontAwesome6 name="paper-plane" size={14} color="#8B5CF6" />
+                      </View>
+                      <Text style={styles.settingLabel}>发送测试通知</Text>
+                    </View>
+                    <View style={styles.testBtn}>
+                      <Text style={styles.testBtnText}>发送</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+            {overdueReminders.length > 0 ? (
+              <Text style={styles.sectionTitle}>
+                <FontAwesome6 name="triangle-exclamation" size={14} color="#DC2626" /> 已逾期
+              </Text>
+            ) : upcomingReminders.length > 0 ? (
+              <Text style={styles.sectionTitle}>
+                <FontAwesome6 name="calendar-check" size={14} color="#059669" /> 即将到来
+              </Text>
+            ) : null}
+          </View>
+        }
         contentContainerStyle={[
           styles.listContent,
           reminders.length === 0 && styles.emptyContainer,
@@ -424,17 +436,6 @@ export default function RemindersScreen() {
             onRefresh={onRefresh}
             tintColor="#059669"
           />
-        }
-        ListHeaderComponent={
-          overdueReminders.length > 0 ? (
-            <Text style={styles.sectionTitle}>
-              <FontAwesome6 name="triangle-exclamation" size={14} color="#DC2626" /> 已逾期
-            </Text>
-          ) : upcomingReminders.length > 0 ? (
-            <Text style={styles.sectionTitle}>
-              <FontAwesome6 name="calendar-check" size={14} color="#059669" /> 即将到来
-            </Text>
-          ) : null
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
