@@ -65,29 +65,47 @@ function getDaysUntil(dateStr: string): number {
 
 function TimePickerColumn({
   values,
-  selectedValue,
+  initialValue,
   onSelect,
   label,
 }: {
   values: number[];
-  selectedValue: number;
+  initialValue: number;
   onSelect: (v: number) => void;
   label: string;
 }) {
   const scrollRef = useRef<ScrollView>(null);
   const itemHeight = 44;
+  const [currentIndex, setCurrentIndex] = useState(values.indexOf(initialValue));
+  const hasInitializedRef = useRef(false);
 
-  // 滚动到当前选中值
+  // 只在组件首次挂载时滚动到初始位置
   useEffect(() => {
-    scrollRef.current?.scrollTo({ y: selectedValue * itemHeight, animated: true });
-  }, [selectedValue]);
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      const initialIdx = values.indexOf(initialValue);
+      if (initialIdx >= 0) {
+        setTimeout(() => {
+          scrollRef.current?.scrollTo({ y: initialIdx * itemHeight, animated: false });
+        }, 50);
+      }
+    }
+  }, [initialValue, values, itemHeight]);
 
   // 滚动停止时自动保存
   const handleMomentumScrollEnd = (event: any) => {
     const y = event.nativeEvent.contentOffset.y;
     const index = Math.round(y / itemHeight);
     const clampedIndex = Math.max(0, Math.min(index, values.length - 1));
+    
+    setCurrentIndex(clampedIndex);
     onSelect(values[clampedIndex]);
+    
+    // 精确对齐到整数位置
+    const snappedY = clampedIndex * itemHeight;
+    if (Math.abs(y - snappedY) > 1) {
+      scrollRef.current?.scrollTo({ y: snappedY, animated: true });
+    }
   };
 
   return (
@@ -99,18 +117,23 @@ function TimePickerColumn({
         contentContainerStyle={tpStyles.scrollContent}
         showsVerticalScrollIndicator={false}
         snapToInterval={itemHeight}
-        decelerationRate="fast"
+        snapToAlignment="center"
+        decelerationRate="normal"
+        scrollEventThrottle={16}
         onMomentumScrollEnd={handleMomentumScrollEnd}
+        bounces={false}
+        overScrollMode="never"
       >
-        {values.map((v) => {
-          const isSelected = v === selectedValue;
+        {values.map((v, index) => {
+          const isSelected = index === currentIndex;
           return (
             <TouchableOpacity
               key={v}
               style={[tpStyles.item, isSelected && tpStyles.itemSelected]}
               activeOpacity={0.6}
               onPress={() => {
-                scrollRef.current?.scrollTo({ y: v * itemHeight, animated: true });
+                scrollRef.current?.scrollTo({ y: index * itemHeight, animated: true });
+                setCurrentIndex(index);
                 onSelect(v);
               }}
             >
@@ -474,7 +497,7 @@ export default function RemindersScreen() {
             <View style={styles.pickerBody}>
               <TimePickerColumn
                 values={Array.from({ length: 24 }, (_, i) => i)}
-                selectedValue={pickerHour}
+                initialValue={pickerHour}
                 onSelect={(v) => {
                   setPickerHour(v);
                   // 滚动停止时自动保存
@@ -487,7 +510,7 @@ export default function RemindersScreen() {
               <Text style={styles.pickerColon}>:</Text>
               <TimePickerColumn
                 values={Array.from({ length: 60 }, (_, i) => i)}
-                selectedValue={pickerMinute}
+                initialValue={pickerMinute}
                 onSelect={(v) => {
                   setPickerMinute(v);
                   // 滚动停止时自动保存

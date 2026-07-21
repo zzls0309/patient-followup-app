@@ -54,56 +54,51 @@ function getDaysUntil(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-// 滚动列组件 - 使用 FlatList 实现更顺滑的滚动
+// 滚动列组件 - 使用 ScrollView 实现顺滑滚动
 function ScrollColumn({
   items,
-  selectedIndex,
+  initialIndex,
   onSelect,
   itemHeight,
 }: {
   items: number[];
-  selectedIndex: number;
+  initialIndex: number;
   onSelect: (value: number) => void;
   itemHeight: number;
 }) {
-  const flatListRef = useRef<FlatList>(null);
-  const [scrollY, setScrollY] = useState(selectedIndex * itemHeight);
-  const isUserScrollingRef = useRef(false);
-  const lastUserSelectedRef = useRef(selectedIndex);
+  const scrollRef = useRef<ScrollView>(null);
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const isScrollingRef = useRef(false);
+  const hasInitializedRef = useRef(false);
 
-  // 只在外部重置 selectedIndex 时滚动
+  // 只在组件首次挂载时滚动到初始位置
   useEffect(() => {
-    if (selectedIndex !== lastUserSelectedRef.current) {
-      isUserScrollingRef.current = false;
-      flatListRef.current?.scrollToOffset({ offset: selectedIndex * itemHeight, animated: false });
-      setScrollY(selectedIndex * itemHeight);
-      lastUserSelectedRef.current = selectedIndex;
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      // 延迟确保 ScrollView 已渲染
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ y: initialIndex * itemHeight, animated: false });
+      }, 50);
     }
-  }, [selectedIndex, itemHeight]);
-
-  const handleScroll = (event: any) => {
-    if (!isUserScrollingRef.current) return;
-    const offsetY = event.nativeEvent.contentOffset.y;
-    setScrollY(offsetY);
-  };
+  }, [initialIndex, itemHeight]);
 
   const handleMomentumScrollEnd = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset.y;
     const index = Math.round(offsetY / itemHeight);
     const clampedIndex = Math.max(0, Math.min(index, items.length - 1));
-    const snappedY = clampedIndex * itemHeight;
     
-    isUserScrollingRef.current = false;
-    setScrollY(snappedY);
-    lastUserSelectedRef.current = clampedIndex;
+    setCurrentIndex(clampedIndex);
     onSelect(items[clampedIndex]);
     
-    // 精确对齐
-    flatListRef.current?.scrollToOffset({ offset: snappedY, animated: true });
+    // 精确对齐到整数位置
+    const snappedY = clampedIndex * itemHeight;
+    if (Math.abs(offsetY - snappedY) > 1) {
+      scrollRef.current?.scrollTo({ y: snappedY, animated: true });
+    }
   };
 
   const handleScrollBeginDrag = () => {
-    isUserScrollingRef.current = true;
+    isScrollingRef.current = true;
   };
 
   const visibleHeight = itemHeight * 5;
@@ -122,17 +117,30 @@ function ScrollColumn({
         borderRadius: 10,
         zIndex: 0,
       }} />
-      <FlatList
-        ref={flatListRef}
-        data={items}
-        keyExtractor={(item) => String(item)}
-        renderItem={({ item, index }) => {
-          const distance = Math.abs((scrollY / itemHeight) - index);
-          const opacity = Math.max(0.25, 1 - distance * 0.35);
-          const scale = Math.max(0.75, 1 - distance * 0.12);
-          const isSelected = distance < 0.5;
+      <ScrollView
+        ref={scrollRef}
+        style={{ flex: 1, width: '100%' }}
+        contentContainerStyle={{ paddingVertical: paddingHeight }}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={itemHeight}
+        snapToAlignment="center"
+        decelerationRate="normal"
+        scrollEventThrottle={16}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        bounces={false}
+        overScrollMode="never"
+      >
+        {items.map((item, index) => {
+          const distance = Math.abs(index - currentIndex);
+          const opacity = Math.max(0.3, 1 - distance * 0.3);
+          const scale = Math.max(0.8, 1 - distance * 0.1);
+          const isSelected = index === currentIndex;
           return (
-            <View style={{ height: itemHeight, alignItems: 'center', justifyContent: 'center' }}>
+            <View 
+              key={item}
+              style={{ height: itemHeight, alignItems: 'center', justifyContent: 'center' }}
+            >
               <Text style={{
                 fontSize: 24 * scale,
                 opacity,
@@ -143,26 +151,8 @@ function ScrollColumn({
               </Text>
             </View>
           );
-        }}
-        style={{ flex: 1, width: '100%' }}
-        contentContainerStyle={{ paddingVertical: paddingHeight }}
-        showsVerticalScrollIndicator={false}
-        getItemLayout={(_, index) => ({
-          length: itemHeight,
-          offset: index * itemHeight,
-          index,
         })}
-        snapToInterval={itemHeight}
-        snapToAlignment="center"
-        decelerationRate="fast"
-        scrollEventThrottle={16}
-        onScroll={handleScroll}
-        onScrollBeginDrag={handleScrollBeginDrag}
-        onMomentumScrollEnd={handleMomentumScrollEnd}
-        bounces={false}
-        overScrollMode="never"
-        initialScrollIndex={selectedIndex}
-      />
+      </ScrollView>
     </View>
   );
 }
@@ -230,15 +220,15 @@ function DatePickerModal({
           <View style={dpStyles.columnsWrapper}>
             <View style={dpStyles.column}>
               <Text style={dpStyles.columnLabel}>年</Text>
-              <ScrollColumn items={years} selectedIndex={yearIndex >= 0 ? yearIndex : 0} onSelect={handleYearChange} itemHeight={ITEM_HEIGHT} />
+              <ScrollColumn items={years} initialIndex={yearIndex >= 0 ? yearIndex : 0} onSelect={handleYearChange} itemHeight={ITEM_HEIGHT} />
             </View>
             <View style={dpStyles.column}>
               <Text style={dpStyles.columnLabel}>月</Text>
-              <ScrollColumn items={months} selectedIndex={monthIndex >= 0 ? monthIndex : 0} onSelect={handleMonthChange} itemHeight={ITEM_HEIGHT} />
+              <ScrollColumn items={months} initialIndex={monthIndex >= 0 ? monthIndex : 0} onSelect={handleMonthChange} itemHeight={ITEM_HEIGHT} />
             </View>
             <View style={dpStyles.column}>
               <Text style={dpStyles.columnLabel}>日</Text>
-              <ScrollColumn items={days} selectedIndex={dayIndex >= 0 ? dayIndex : 0} onSelect={handleDayChange} itemHeight={ITEM_HEIGHT} />
+              <ScrollColumn items={days} initialIndex={dayIndex >= 0 ? dayIndex : 0} onSelect={handleDayChange} itemHeight={ITEM_HEIGHT} />
             </View>
           </View>
           <View style={dpStyles.footer}>
