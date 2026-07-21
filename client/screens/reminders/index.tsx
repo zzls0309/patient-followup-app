@@ -23,8 +23,9 @@ import {
   setNotificationsEnabled,
   getReminderTime,
   setReminderTime,
-  registerForPushNotifications,
-  sendImmediateNotification,
+  shouldShowReminder,
+  markTodayChecked,
+  getReminderSummary,
 } from '@/utils/notifications';
 
 const API_BASE = process.env.EXPO_PUBLIC_BACKEND_BASE_URL + '/api/v1';
@@ -188,15 +189,14 @@ export default function RemindersScreen() {
   };
 
   const handleToggleNotifications = async (value: boolean) => {
-    if (value) {
-      const granted = await registerForPushNotifications();
-      if (!granted) {
-        Alert.alert('权限不足', '请在系统设置中允许通知权限');
-        return;
-      }
-    }
     await setNotificationsEnabled(value);
     setNotifEnabled(value);
+    if (value) {
+      Alert.alert(
+        '应用内提醒已开启',
+        '当您打开应用时，如果有即将到期的随诊，会在首页显示提醒横幅。'
+      );
+    }
   };
 
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -218,7 +218,8 @@ export default function RemindersScreen() {
   };
 
   const handleTestNotification = async () => {
-    await sendImmediateNotification('随访提醒测试', '通知功能正常工作！');
+    const summary = await getReminderSummary(overdueReminders.length, upcomingReminders.length);
+    Alert.alert('随访提醒测试', summary + '\n\n应用内提醒功能正常！');
   };
 
   const overdueReminders = reminders.filter((r) => getDaysUntil(r.scheduled_date) < 0);

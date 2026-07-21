@@ -1,139 +1,91 @@
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const REMINDER_TIME_KEY = '@reminder_time';
 const NOTIFICATIONS_ENABLED_KEY = '@notifications_enabled';
-
-// 设置通知处理器（前台也显示通知）
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  } as Notifications.NotificationBehavior),
-});
-
-// 初始化通知权限
-export async function registerForPushNotifications(): Promise<boolean> {
-  const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
-
-  if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-
-  if (finalStatus !== 'granted') {
-    return false;
-  }
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('followup-reminders', {
-      name: '随访提醒',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#059669',
-    });
-  }
-
-  return true;
-}
-
-// 取消所有已调度的通知
-export async function cancelAllNotifications(): Promise<void> {
-  await Notifications.cancelAllScheduledNotificationsAsync();
-}
-
-// 调度每日检查通知
-export async function scheduleDailyReminder(): Promise<void> {
-  await cancelAllNotifications();
-
-  const enabled = await getNotificationsEnabled();
-  if (!enabled) return;
-
-  const reminderTime = await getReminderTime();
-  const [hours, minutes] = reminderTime.split(':').map(Number);
-
-  // 计算距离下次提醒的毫秒数
-  const now = new Date();
-  const bjNow = getBJNow();
-  const target = new Date(bjNow);
-  target.setHours(hours, minutes, 0, 0);
-
-  // 如果今天的时间已过，设置为明天
-  if (target.getTime() <= bjNow.getTime()) {
-    target.setDate(target.getDate() + 1);
-  }
-
-  const msUntilTrigger = target.getTime() - bjNow.getTime();
-
-  // 使用 seconds 触发器
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: '随访提醒',
-      body: '请检查今日待办随访任务',
-      sound: true,
-      data: { type: 'daily-check' },
-    },
-    trigger: {
-      seconds: Math.floor(msUntilTrigger / 1000),
-      repeats: false,
-    } as Notifications.NotificationTriggerInput,
-  });
-}
-
-// 获取北京时间当前时间
-function getBJNow(): Date {
-  const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  return new Date(utc + 8 * 60 * 60000);
-}
+const LAST_CHECK_DATE_KEY = '@last_check_date';
 
 // 获取提醒时间（北京时间 HH:mm）
 export async function getReminderTime(): Promise<string> {
   const time = await AsyncStorage.getItem(REMINDER_TIME_KEY);
-  return time || '08:00';
+  return time || '09:00';
 }
 
 // 设置提醒时间
 export async function setReminderTime(time: string): Promise<void> {
   await AsyncStorage.setItem(REMINDER_TIME_KEY, time);
-  await scheduleDailyReminder();
 }
 
-// 获取通知是否启用
+// 获取通知开关
 export async function getNotificationsEnabled(): Promise<boolean> {
   const enabled = await AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY);
   return enabled !== 'false';
 }
 
-// 设置通知是否启用
+// 设置通知开关
 export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
-  await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, enabled ? 'true' : 'false');
-  if (enabled) {
-    await scheduleDailyReminder();
-  } else {
-    await cancelAllNotifications();
-  }
+  await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, enabled.toString());
 }
 
-// 发送即时通知（用于测试）
-export async function sendImmediateNotification(title: string, body: string): Promise<void> {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-      sound: true,
-    },
-    trigger: null,
-  });
+// 获取上次检查日期
+export async function getLastCheckDate(): Promise<string | null> {
+  return AsyncStorage.getItem(LAST_CHECK_DATE_KEY);
 }
 
-// 初始化通知系统
-export async function initNotifications(): Promise<void> {
-  const granted = await registerForPushNotifications();
-  if (granted) {
-    await scheduleDailyReminder();
+// 设置上次检查日期
+export async function setLastCheckDate(date: string): Promise<void> {
+  await AsyncStorage.setItem(LAST_CHECK_DATE_KEY, date);
+}
+
+// 获取当前北京时间
+export function getBeijingNow(): Date {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  return new Date(utc + 8 * 3600000);
+}
+
+// 格式化日期为 YYYY-MM-DD
+export function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// 检查是否应该显示提醒
+export async function shouldShowReminder(): Promise<boolean> {
+  const enabled = await getNotificationsEnabled();
+  if (!enabled) return false;
+
+  const now = getBeijingNow();
+  const today = formatDate(now);
+  const lastCheck = await getLastCheckDate();
+
+  // 如果今天已经检查过，不再提醒
+  if (lastCheck === today) return false;
+
+  // 检查当前时间是否已过提醒时间
+  const reminderTime = await getReminderTime();
+  const [hours, minutes] = reminderTime.split(':').map(Number);
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const reminderMinutes = hours * 60 + minutes;
+
+  return currentMinutes >= reminderMinutes;
+}
+
+// 标记今天已检查
+export async function markTodayChecked(): Promise<void> {
+  const now = getBeijingNow();
+  await setLastCheckDate(formatDate(now));
+}
+
+// 获取提醒摘要文本
+export function getReminderSummary(upcomingCount: number, overdueCount: number): string {
+  if (overdueCount > 0 && upcomingCount > 0) {
+    return `您有 ${overdueCount} 个已逾期和 ${upcomingCount} 个即将到来的随诊提醒`;
+  } else if (overdueCount > 0) {
+    return `您有 ${overdueCount} 个已逾期的随诊需要处理`;
+  } else if (upcomingCount > 0) {
+    return `您有 ${upcomingCount} 个随诊即将到期`;
   }
+  return '今日无随诊提醒';
 }

@@ -15,6 +15,7 @@ import { Screen } from '@/components/Screen';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getNotificationsEnabled, shouldShowReminder, markTodayChecked } from '@/utils/notifications';
 
 const API_BASE = `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1`;
 
@@ -52,6 +53,8 @@ export default function PatientsScreen() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [reminderCount, setReminderCount] = useState(0);
+  const [showReminder, setShowReminder] = useState(false);
   const router = useSafeRouter();
   const insets = useSafeAreaInsets();
 
@@ -68,10 +71,31 @@ export default function PatientsScreen() {
     }
   }, []);
 
+  const checkReminders = useCallback(async () => {
+    const enabled = await getNotificationsEnabled();
+    if (!enabled) return;
+
+    const shouldShow = await shouldShowReminder();
+    if (!shouldShow) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/patients/reminders/upcoming`);
+      const data = await response.json();
+      if (data.length > 0) {
+        setReminderCount(data.length);
+        setShowReminder(true);
+        await markTodayChecked();
+      }
+    } catch (err) {
+      console.error('Failed to check reminders:', err);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       fetchPatients();
-    }, [fetchPatients])
+      checkReminders();
+    }, [fetchPatients, checkReminders])
   );
 
   const onRefresh = () => {
@@ -194,6 +218,30 @@ export default function PatientsScreen() {
           </View>
         </View>
       </LinearGradient>
+
+      {showReminder && reminderCount > 0 && (
+        <TouchableOpacity
+          style={styles.reminderBanner}
+          activeOpacity={0.8}
+          onPress={() => {
+            setShowReminder(false);
+            router.navigate('/(tabs)/reminders');
+          }}
+        >
+          <View style={styles.reminderBannerLeft}>
+            <View style={styles.reminderBannerIcon}>
+              <FontAwesome6 name="bell" size={16} color="#D97706" />
+            </View>
+            <Text style={styles.reminderBannerText}>
+              {reminderCount} 个随诊提醒待处理
+            </Text>
+          </View>
+          <View style={styles.reminderBannerRight}>
+            <Text style={styles.reminderBannerAction}>查看</Text>
+            <FontAwesome6 name="chevron-right" size={12} color="#D97706" />
+          </View>
+        </TouchableOpacity>
+      )}
 
       <FlatList
         data={patients}
@@ -411,5 +459,46 @@ const styles = StyleSheet.create({
   emptyDesc: {
     fontSize: 14,
     color: '#94A3B8',
+  },
+  reminderBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FEF3C7',
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F59E0B',
+  },
+  reminderBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  reminderBannerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#FDE68A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reminderBannerText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  reminderBannerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  reminderBannerAction: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#D97706',
   },
 });
