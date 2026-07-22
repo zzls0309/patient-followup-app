@@ -25,6 +25,9 @@ export default function AddPatientScreen() {
   const [age, setAge] = useState('');
   const [notes, setNotes] = useState('');
   const [firstTreatmentDate, setFirstTreatmentDate] = useState('');
+  const [treatment2Date, setTreatment2Date] = useState('');
+  const [treatment3Date, setTreatment3Date] = useState('');
+  const [photoDate, setPhotoDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const router = useSafeRouter();
   const insets = useSafeAreaInsets();
@@ -51,6 +54,9 @@ export default function AddPatientScreen() {
           age: age ? parseInt(age) : 0,
           notes: notes.trim(),
           firstTreatmentDate,
+          treatment2Date: treatment2Date || undefined,
+          treatment3Date: treatment3Date || undefined,
+          photoDate: photoDate || undefined,
         }),
       });
 
@@ -59,7 +65,13 @@ export default function AddPatientScreen() {
         throw new Error(err.error || '创建失败');
       }
 
-      Alert.alert('成功', '患者添加成功，已自动创建4次随访计划', [
+      // 构建成功提示信息
+      const completedCount = [firstTreatmentDate, treatment2Date, treatment3Date, photoDate].filter(Boolean).length;
+      const message = completedCount > 1
+        ? `患者添加成功，已标记 ${completedCount} 次随访完成，并自动推算下次随诊时间`
+        : '患者添加成功，已自动创建4次随访计划';
+
+      Alert.alert('成功', message, [
         { text: '确定', onPress: () => router.back() },
       ]);
     } catch (err) {
@@ -168,8 +180,53 @@ export default function AddPatientScreen() {
           <View style={styles.hintCard}>
             <FontAwesome6 name="circle-info" size={16} color="#059669" />
             <Text style={styles.hintText}>
-              系统将根据第一次治疗日期，自动推算后续3次随访日期（每次间隔28天）
+              第一次治疗日期为必填项，系统将根据此日期自动推算后续随访时间
             </Text>
+          </View>
+
+          <Text style={[styles.sectionTitle, { marginTop: 20 }]}>已完成的随访（选填）</Text>
+          <Text style={styles.sectionHint}>如患者已完成部分随访，请填写实际日期，系统将自动标记完成</Text>
+
+          <View style={styles.fieldCard}>
+            <View style={styles.fieldLabelRow}>
+              <Text style={styles.fieldLabel}>第二次治疗日期</Text>
+              <Text style={styles.optionalBadge}>选填</Text>
+            </View>
+            <TextInput
+              style={styles.fieldInput}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#CBD5E1"
+              value={treatment2Date}
+              onChangeText={setTreatment2Date}
+            />
+          </View>
+
+          <View style={styles.fieldCard}>
+            <View style={styles.fieldLabelRow}>
+              <Text style={styles.fieldLabel}>第三次治疗日期</Text>
+              <Text style={styles.optionalBadge}>选填</Text>
+            </View>
+            <TextInput
+              style={styles.fieldInput}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#CBD5E1"
+              value={treatment3Date}
+              onChangeText={setTreatment3Date}
+            />
+          </View>
+
+          <View style={styles.fieldCard}>
+            <View style={styles.fieldLabelRow}>
+              <Text style={styles.fieldLabel}>拍照随访日期</Text>
+              <Text style={styles.optionalBadge}>选填</Text>
+            </View>
+            <TextInput
+              style={styles.fieldInput}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#CBD5E1"
+              value={photoDate}
+              onChangeText={setPhotoDate}
+            />
           </View>
 
           <Text style={[styles.sectionTitle, { marginTop: 24 }]}>备注</Text>
@@ -291,8 +348,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#059669',
     flex: 1,
-    lineHeight: 18,
-    fontWeight: '500',
+    lineHeight: 19,
+  },
+  sectionHint: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginBottom: 14,
+    marginTop: -8,
+  },
+  fieldLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  optionalBadge: {
+    fontSize: 11,
+    color: '#059669',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    fontWeight: '600',
   },
   submitBtn: {
     flexDirection: 'row',
