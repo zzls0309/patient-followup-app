@@ -163,6 +163,12 @@ export default function CalendarScreen() {
               const items = dateKey ? calendarData[dateKey] || [] : [];
               const isToday = day === todayDate;
 
+              // 按步骤类型统计人数
+              const stepCounts: Record<string, number> = {};
+              items.forEach(item => {
+                stepCounts[item.step_type] = (stepCounts[item.step_type] || 0) + 1;
+              });
+
               return (
                 <TouchableOpacity
                   key={idx}
@@ -179,8 +185,16 @@ export default function CalendarScreen() {
                         </Text>
                       </View>
                       {items.length > 0 && (
-                        <View style={styles.countBadge}>
-                          <Text style={styles.countText}>{items.length}人</Text>
+                        <View style={styles.stepCountsContainer}>
+                          {Object.entries(STEP_COLORS).map(([type, color]) => {
+                            const count = stepCounts[type];
+                            if (!count) return null;
+                            return (
+                              <View key={type} style={[styles.stepCountBadge, { backgroundColor: color }]}>
+                                <Text style={styles.stepCountText}>{count}</Text>
+                              </View>
+                            );
+                          })}
                         </View>
                       )}
                     </>
@@ -309,15 +323,23 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
   },
-  countBadge: {
-    backgroundColor: '#059669',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+  stepCountsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 2,
     marginTop: 2,
+    paddingHorizontal: 2,
   },
-  countText: {
-    fontSize: 10,
+  stepCountBadge: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepCountText: {
+    fontSize: 9,
     fontWeight: '700',
     color: '#FFFFFF',
   },
