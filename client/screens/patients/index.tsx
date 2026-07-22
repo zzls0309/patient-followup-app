@@ -273,7 +273,7 @@ export default function PatientsScreen() {
             tintColor="#059669"
           />
         }
-        ListFooterComponent={<View style={{ height: 100 }} />}
+        ListFooterComponent={<View style={{ height: 68 + insets.bottom + 20 }} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
