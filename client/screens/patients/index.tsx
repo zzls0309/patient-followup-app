@@ -273,6 +273,7 @@ export default function PatientsScreen() {
             tintColor="#059669"
           />
         }
+        ListFooterComponent={<View style={{ height: 100 }} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
@@ -346,7 +347,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 200,
   },
   emptyContainer: {
     flex: 1,
