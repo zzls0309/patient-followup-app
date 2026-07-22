@@ -246,38 +246,43 @@ router.post('/import', upload.single('file'), async (req, res) => {
       const age = parseInt(String(row['年龄'] || row['age'] || '0'));
       const notes = String(row['备注'] || row['notes'] || '').trim();
       const firstDate = String(row['首次治疗日期'] || row['firstTreatmentDate'] || row['首次治疗'] || '').trim();
+      const secondDate = String(row['二次治疗日期'] || row['secondTreatmentDate'] || row['二次治疗'] || '').trim();
+      const thirdDate = String(row['三次治疗日期'] || row['thirdTreatmentDate'] || row['三次治疗'] || '').trim();
+      const photoDate = String(row['拍照随访日期'] || row['photoDate'] || row['拍照随访'] || '').trim();
 
       if (!name) {
         results.failed++;
         results.errors.push(`第${rowNum}行：缺少姓名`);
         continue;
       }
-      if (!firstDate) {
-        results.failed++;
-        results.errors.push(`第${rowNum}行(${name})：缺少首次治疗日期`);
-        continue;
-      }
 
-      // 验证日期格式（支持 YYYY-MM-DD 或 YYYY.MM.DD）
-      let validDate = '';
-      const dateMatch = firstDate.match(/^(\d{4})[-.](\d{1,2})[-.](\d{1,2})$/);
-      if (dateMatch) {
-        validDate = `${dateMatch[1]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[3].padStart(2, '0')}`;
-      } else {
-        // 尝试解析 Excel 日期序列号
-        const numDate = Number(firstDate);
+      // 解析日期函数（支持 YYYY-MM-DD 或 YYYY.MM.DD 或 Excel 日期序列号）
+      const parseDate = (dateStr: string): string | null => {
+        if (!dateStr) return null;
+        const dateMatch = dateStr.match(/^(\d{4})[-.](\d{1,2})[-.](\d{1,2})$/);
+        if (dateMatch) {
+          return `${dateMatch[1]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[3].padStart(2, '0')}`;
+        }
+        const numDate = Number(dateStr);
         if (!isNaN(numDate) && numDate > 0) {
           const d = XLSX.SSF.parse_date_code(numDate);
           if (d) {
-            validDate = `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+            return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
           }
         }
-      }
-      if (!validDate) {
+        return null;
+      };
+
+      const parsedFirstDate = parseDate(firstDate);
+      if (!parsedFirstDate) {
         results.failed++;
-        results.errors.push(`第${rowNum}行(${name})：日期格式错误(${firstDate})，请使用 YYYY.MM.DD 或 YYYY-MM-DD`);
+        results.errors.push(`第${rowNum}行(${name})：缺少首次治疗日期或日期格式错误`);
         continue;
       }
+
+      const parsedSecondDate = parseDate(secondDate);
+      const parsedThirdDate = parseDate(thirdDate);
+      const parsedPhotoDate = parseDate(photoDate);
 
       try {
         // 创建患者
@@ -288,14 +293,65 @@ router.post('/import', upload.single('file'), async (req, res) => {
           .single();
         if (patientError) throw new Error(patientError.message);
 
-        // 创建步骤
-        const stepDates = generateStepDates(validDate);
-        const stepsToInsert = stepDates.map(s => ({
-          patient_id: patient.id,
-          step_number: s.step_number,
-          step_type: s.step_type,
-          scheduled_date: s.scheduled_date,
-        }));
+        // 收集所有已完成的日期
+        const completedDates: { step_number: number; step_type: string; completed_date: string }[] = [];
+        completedDates.push({ step_number: 1, step_type: 'treatment_1', completed_date: parsedFirstDate });
+        if (parsedSecondDate) {
+          completedDates.push({ step_number: 2, step_type: 'treatment_2', completed_date: parsedSecondDate });
+        }
+        if (parsedThirdDate) {
+          completedDates.push({ step_number: 3, step_type: 'treatment_3', completed_date: parsedThirdDate });
+        }
+        if (parsedPhotoDate) {
+          completedDates.push({ step_number: 4, step_type: 'photo', completed_date: parsedPhotoDate });
+        }
+
+        // 找到最后完成的日期
+        const lastCompletedDate = completedDates[completedDates.length - 1].completed_date;
+        const allCompleted = completedDates.length >= 4;
+
+        // 生成步骤
+        const stepsToInsert: { patient_id: number; step_number: number; step_type: string; scheduled_date: string; completed_date?: string; status: string }[] = [];
+
+        // 添加已完成的步骤
+        for (const cd of completedDates) {
+          stepsToInsert.push({
+            patient_id: patient.id,
+            step_number: cd.step_number,
+            step_type: cd.step_type,
+            scheduled_date: cd.completed_date,
+            completed_date: cd.completed_date,
+            status: 'completed',
+          });
+        }
+
+        // 如果4次都完成，创建新一轮随访
+        if (allCompleted) {
+          const newCycleDates = generateStepDates(lastCompletedDate);
+          for (const s of newCycleDates) {
+            stepsToInsert.push({
+              patient_id: patient.id,
+              step_number: s.step_number,
+              step_type: s.step_type,
+              scheduled_date: s.scheduled_date,
+              status: 'scheduled',
+            });
+          }
+        } else {
+          // 根据最后完成的日期推算后续步骤
+          const lastStepNumber = completedDates[completedDates.length - 1].step_number;
+          const remainingSteps = generateStepDates(lastCompletedDate).filter(s => s.step_number > lastStepNumber);
+          for (const s of remainingSteps) {
+            stepsToInsert.push({
+              patient_id: patient.id,
+              step_number: s.step_number,
+              step_type: s.step_type,
+              scheduled_date: s.scheduled_date,
+              status: 'scheduled',
+            });
+          }
+        }
+
         const { error: stepsError } = await client.from('followup_steps').insert(stepsToInsert);
         if (stepsError) throw new Error(stepsError.message);
 
