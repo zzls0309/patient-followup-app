@@ -53,10 +53,10 @@ export default function AddPatientScreen() {
           gender,
           age: age ? parseInt(age) : 0,
           notes: notes.trim(),
-          firstTreatmentDate,
-          treatment2Date: treatment2Date || undefined,
-          treatment3Date: treatment3Date || undefined,
-          photoDate: photoDate || undefined,
+          firstTreatmentDate: normalizeDate(firstTreatmentDate),
+          treatment2Date: treatment2Date ? normalizeDate(treatment2Date) : undefined,
+          treatment3Date: treatment3Date ? normalizeDate(treatment3Date) : undefined,
+          photoDate: photoDate ? normalizeDate(photoDate) : undefined,
         }),
       });
 
@@ -84,7 +84,12 @@ export default function AddPatientScreen() {
   const getTomorrowDate = () => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+    return d.toISOString().split('T')[0].replace(/-/g, '.');
+  };
+
+  // 将用户输入的日期格式（支持 . 或 - 分隔）转换为 YYYY-MM-DD 格式
+  const normalizeDate = (dateStr: string): string => {
+    return dateStr.replace(/\./g, '-');
   };
 
   return (
@@ -177,7 +182,7 @@ export default function AddPatientScreen() {
             <Text style={styles.fieldLabel}>第一次治疗日期 *</Text>
             <TextInput
               style={styles.fieldInput}
-              placeholder={`YYYY-MM-DD，例如：${getTomorrowDate()}`}
+              placeholder={`YYYY.MM.DD，例如：${getTomorrowDate()}`}
               placeholderTextColor="#CBD5E1"
               value={firstTreatmentDate}
               onChangeText={setFirstTreatmentDate}
@@ -201,7 +206,7 @@ export default function AddPatientScreen() {
             </View>
             <TextInput
               style={styles.fieldInput}
-              placeholder="YYYY-MM-DD"
+              placeholder="YYYY.MM.DD"
               placeholderTextColor="#CBD5E1"
               value={treatment2Date}
               onChangeText={setTreatment2Date}
@@ -215,7 +220,7 @@ export default function AddPatientScreen() {
             </View>
             <TextInput
               style={styles.fieldInput}
-              placeholder="YYYY-MM-DD"
+              placeholder="YYYY.MM.DD"
               placeholderTextColor="#CBD5E1"
               value={treatment3Date}
               onChangeText={setTreatment3Date}
@@ -229,7 +234,7 @@ export default function AddPatientScreen() {
             </View>
             <TextInput
               style={styles.fieldInput}
-              placeholder="YYYY-MM-DD"
+              placeholder="YYYY.MM.DD"
               placeholderTextColor="#CBD5E1"
               value={photoDate}
               onChangeText={setPhotoDate}

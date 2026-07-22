@@ -258,9 +258,9 @@ router.post('/import', upload.single('file'), async (req, res) => {
         continue;
       }
 
-      // 验证日期格式
+      // 验证日期格式（支持 YYYY-MM-DD 或 YYYY.MM.DD）
       let validDate = '';
-      const dateMatch = firstDate.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      const dateMatch = firstDate.match(/^(\d{4})[-.](\d{1,2})[-.](\d{1,2})$/);
       if (dateMatch) {
         validDate = `${dateMatch[1]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[3].padStart(2, '0')}`;
       } else {
@@ -275,7 +275,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
       }
       if (!validDate) {
         results.failed++;
-        results.errors.push(`第${rowNum}行(${name})：日期格式错误(${firstDate})`);
+        results.errors.push(`第${rowNum}行(${name})：日期格式错误(${firstDate})，请使用 YYYY.MM.DD 或 YYYY-MM-DD`);
         continue;
       }
 
@@ -340,6 +340,14 @@ router.post('/', async (req, res) => {
   if (!name || !firstTreatmentDate) {
     return res.status(400).json({ error: 'Name and firstTreatmentDate are required' });
   }
+
+  // 规范化日期格式（将 . 替换为 -）
+  const normalizeDate = (d: string) => d.replace(/\./g, '-');
+  const normalizedFirstDate = normalizeDate(firstTreatmentDate);
+  const normalizedT2Date = treatment2Date ? normalizeDate(treatment2Date) : undefined;
+  const normalizedT3Date = treatment3Date ? normalizeDate(treatment3Date) : undefined;
+  const normalizedPhotoDate = photoDate ? normalizeDate(photoDate) : undefined;
+
   try {
     const client = getSupabaseClient();
     const { data: patient, error: patientError } = await client
@@ -348,15 +356,15 @@ router.post('/', async (req, res) => {
     if (patientError) throw new Error(`创建患者失败: ${patientError.message}`);
 
     // 生成4个步骤的计划日期
-    const stepDates = generateStepDates(firstTreatmentDate);
+    const stepDates = generateStepDates(normalizedFirstDate);
     const today = getTodayBJ();
 
     // 标记已提供日期的步骤为已完成
     const completedDates: Record<number, string> = {};
-    completedDates[1] = firstTreatmentDate; // 第一次治疗始终标记为已完成
-    if (treatment2Date) completedDates[2] = treatment2Date;
-    if (treatment3Date) completedDates[3] = treatment3Date;
-    if (photoDate) completedDates[4] = photoDate;
+    completedDates[1] = normalizedFirstDate; // 第一次治疗始终标记为已完成
+    if (normalizedT2Date) completedDates[2] = normalizedT2Date;
+    if (normalizedT3Date) completedDates[3] = normalizedT3Date;
+    if (normalizedPhotoDate) completedDates[4] = normalizedPhotoDate;
 
     const stepsToInsert = stepDates.map(s => ({
       patient_id: patient.id,

@@ -88,7 +88,7 @@ export default function ImportPatientsScreen() {
             <View className="bg-[#F8FAFC] rounded-[12px] p-4 gap-2">
               {[
                 { field: '姓名', required: true, example: '张三' },
-                { field: '首次治疗日期', required: true, example: '2025-06-01' },
+                { field: '首次治疗日期', required: true, example: '2025.06.01' },
                 { field: '电话', required: false, example: '13800138000' },
                 { field: '性别', required: false, example: '女' },
                 { field: '年龄', required: false, example: '35' },
