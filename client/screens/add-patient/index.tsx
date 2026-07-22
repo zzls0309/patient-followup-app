@@ -37,10 +37,6 @@ export default function AddPatientScreen() {
       Alert.alert('提示', '请输入患者姓名');
       return;
     }
-    if (!firstTreatmentDate) {
-      Alert.alert('提示', '请选择第一次治疗日期');
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -179,7 +175,7 @@ export default function AddPatientScreen() {
           </View>
 
           <View style={styles.fieldCard}>
-            <Text style={styles.fieldLabel}>第一次治疗日期 *</Text>
+            <Text style={styles.fieldLabel}>第一次治疗日期</Text>
             <TextInput
               style={styles.fieldInput}
               placeholder={`YYYY.MM.DD，例如：${getTomorrowDate()}`}
@@ -192,7 +188,7 @@ export default function AddPatientScreen() {
           <View style={styles.hintCard}>
             <FontAwesome6 name="circle-info" size={16} color="#059669" />
             <Text style={styles.hintText}>
-              第一次治疗日期为必填项，系统将根据此日期自动推算后续随访时间
+              所有日期均为选填，填写后系统会自动标记完成并推算后续随访时间
             </Text>
           </View>
 

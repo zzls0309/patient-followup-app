@@ -274,15 +274,16 @@ router.post('/import', upload.single('file'), async (req, res) => {
       };
 
       const parsedFirstDate = parseDate(firstDate);
-      if (!parsedFirstDate) {
-        results.failed++;
-        results.errors.push(`第${rowNum}行(${name})：缺少首次治疗日期或日期格式错误`);
-        continue;
-      }
-
       const parsedSecondDate = parseDate(secondDate);
       const parsedThirdDate = parseDate(thirdDate);
       const parsedPhotoDate = parseDate(photoDate);
+
+      // 至少需要一个日期
+      if (!parsedFirstDate && !parsedSecondDate && !parsedThirdDate && !parsedPhotoDate) {
+        results.failed++;
+        results.errors.push(`第${rowNum}行(${name})：至少需要填写一个治疗日期`);
+        continue;
+      }
 
       try {
         // 创建患者
@@ -295,7 +296,9 @@ router.post('/import', upload.single('file'), async (req, res) => {
 
         // 收集所有已完成的日期
         const completedDates: { step_number: number; step_type: string; scheduled_date: string; completed_date: string }[] = [];
-        completedDates.push({ step_number: 1, step_type: 'treatment_1', scheduled_date: parsedFirstDate, completed_date: parsedFirstDate });
+        if (parsedFirstDate) {
+          completedDates.push({ step_number: 1, step_type: 'treatment_1', scheduled_date: parsedFirstDate, completed_date: parsedFirstDate });
+        }
         if (parsedSecondDate) {
           completedDates.push({ step_number: 2, step_type: 'treatment_2', scheduled_date: parsedSecondDate, completed_date: parsedSecondDate });
         }
@@ -390,13 +393,13 @@ router.get('/:id', async (req, res) => {
 // POST /api/v1/patients - 创建患者
 router.post('/', async (req, res) => {
   const { name, phone, gender, age, notes, firstTreatmentDate, treatment2Date, treatment3Date, photoDate } = req.body;
-  if (!name || !firstTreatmentDate) {
-    return res.status(400).json({ error: 'Name and firstTreatmentDate are required' });
+  if (!name) {
+    return res.status(400).json({ error: 'Name is required' });
   }
 
   // 规范化日期格式（将 . 替换为 -）
   const normalizeDate = (d: string) => d.replace(/\./g, '-');
-  const normalizedFirstDate = normalizeDate(firstTreatmentDate);
+  const normalizedFirstDate = firstTreatmentDate ? normalizeDate(firstTreatmentDate) : undefined;
   const normalizedT2Date = treatment2Date ? normalizeDate(treatment2Date) : undefined;
   const normalizedT3Date = treatment3Date ? normalizeDate(treatment3Date) : undefined;
   const normalizedPhotoDate = photoDate ? normalizeDate(photoDate) : undefined;
@@ -408,13 +411,18 @@ router.post('/', async (req, res) => {
       .select().single();
     if (patientError) throw new Error(`创建患者失败: ${patientError.message}`);
 
+    // 如果没有提供任何日期，只创建患者不创建步骤
+    if (!normalizedFirstDate && !normalizedT2Date && !normalizedT3Date && !normalizedPhotoDate) {
+      return res.json({ ...patient, steps: [] });
+    }
+
     // 生成4个步骤的计划日期
-    const stepDates = generateStepDates(normalizedFirstDate);
+    const stepDates = normalizedFirstDate ? generateStepDates(normalizedFirstDate) : [];
     const today = getTodayBJ();
 
     // 标记已提供日期的步骤为已完成
     const completedDates: Record<number, string> = {};
-    completedDates[1] = normalizedFirstDate; // 第一次治疗始终标记为已完成
+    if (normalizedFirstDate) completedDates[1] = normalizedFirstDate;
     if (normalizedT2Date) completedDates[2] = normalizedT2Date;
     if (normalizedT3Date) completedDates[3] = normalizedT3Date;
     if (normalizedPhotoDate) completedDates[4] = normalizedPhotoDate;
