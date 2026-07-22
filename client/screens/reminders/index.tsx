@@ -552,11 +552,16 @@ export default function RemindersScreen() {
           />
           <View style={styles.pickerContainer}>
             <View style={styles.pickerHeader}>
-              <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+              <View style={styles.pickerHeaderIcon}>
+                <FontAwesome6 name="clock" size={18} color="#059669" />
+              </View>
+              <Text style={styles.pickerTitle}>选择提醒时间</Text>
+            </View>
+            <View style={styles.pickerActions}>
+              <TouchableOpacity onPress={() => setShowTimePicker(false)} style={styles.pickerCancelBtn}>
                 <Text style={styles.pickerCancel}>取消</Text>
               </TouchableOpacity>
-              <Text style={styles.pickerTitle}>选择提醒时间</Text>
-              <TouchableOpacity onPress={() => setShowTimePicker(false)}>
+              <TouchableOpacity onPress={() => setShowTimePicker(false)} style={styles.pickerConfirmBtn}>
                 <Text style={styles.pickerConfirm}>完成</Text>
               </TouchableOpacity>
             </View>
@@ -588,7 +593,10 @@ export default function RemindersScreen() {
                 loop={true}
               />
             </View>
-            <Text style={styles.pickerHint}>北京时间（UTC+8）</Text>
+            <View style={styles.pickerHintContainer}>
+              <FontAwesome6 name="info-circle" size={12} color="#94A3B8" />
+              <Text style={styles.pickerHint}>北京时间（UTC+8）</Text>
+            </View>
           </View>
         </View>
       </Modal>
@@ -822,37 +830,73 @@ const styles = StyleSheet.create({
   },
   pickerBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   pickerContainer: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingBottom: 40,
     paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 20,
   },
   pickerHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    justifyContent: 'center',
+    gap: 10,
+    paddingBottom: 8,
   },
-  pickerCancel: {
-    fontSize: 16,
-    color: '#94A3B8',
-    fontWeight: '500',
+  pickerHeaderIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   pickerTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
     color: '#1E293B',
   },
+  pickerActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  pickerCancelBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+  },
+  pickerCancel: {
+    fontSize: 15,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  pickerConfirmBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#059669',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   pickerConfirm: {
-    fontSize: 16,
-    color: '#059669',
+    fontSize: 15,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   pickerBody: {
@@ -868,10 +912,15 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 24,
   },
+  pickerHintContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
   pickerHint: {
-    textAlign: 'center',
     fontSize: 13,
     color: '#94A3B8',
-    marginTop: 4,
   },
 });

@@ -218,6 +218,9 @@ function DatePickerModal({
       <View style={dpStyles.overlay}>
         <View style={dpStyles.container}>
           <View style={dpStyles.header}>
+            <View style={dpStyles.headerIcon}>
+              <FontAwesome6 name="calendar-check" size={22} color="#059669" />
+            </View>
             <Text style={dpStyles.title}>选择完成日期</Text>
             <Text style={dpStyles.subtitle}>滚动选择年、月、日</Text>
           </View>
@@ -252,19 +255,35 @@ function DatePickerModal({
 const dpStyles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   container: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 20,
   },
   header: {
-    paddingTop: 20,
-    paddingBottom: 12,
+    paddingTop: 24,
+    paddingBottom: 16,
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  headerIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   title: {
     fontSize: 18,
@@ -280,28 +299,32 @@ const dpStyles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 24,
     justifyContent: 'center',
-    gap: 16,
+    gap: 12,
+    paddingVertical: 20,
   },
   column: {
     alignItems: 'center',
     flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    paddingVertical: 12,
   },
   columnLabel: {
     fontSize: 12,
-    color: '#94A3B8',
-    marginBottom: 4,
-    fontWeight: '600',
+    color: '#059669',
+    marginBottom: 8,
+    fontWeight: '700',
   },
   footer: {
     flexDirection: 'row',
     paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingTop: 8,
     gap: 12,
   },
   cancelBtn: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 14,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
   },
@@ -312,10 +335,15 @@ const dpStyles = StyleSheet.create({
   },
   confirmBtn: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 14,
     backgroundColor: '#059669',
     alignItems: 'center',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   confirmText: {
     fontSize: 16,
