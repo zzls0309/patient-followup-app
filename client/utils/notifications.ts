@@ -301,3 +301,35 @@ export async function getReminderSummary(): Promise<string> {
     `令牌类型: ${token?.startsWith('ExponentPushToken') ? 'Expo Push Token' : token ? 'Device Token' : '无'}`,
   ].join('\n');
 }
+
+// 设置通知点击处理（深度链接）
+export function setupNotificationNavigation(navigate: (url: string) => void): () => void {
+  // Web 平台不支持原生通知
+  if (Platform.OS === 'web') {
+    return () => {};
+  }
+
+  // 处理应用在前台时点击通知
+  const subscriptionForeground = Notifications.addNotificationResponseReceivedListener((response) => {
+    const data = response.notification.request.content.data;
+    if (data?.url) {
+      navigate(data.url as string);
+    }
+  });
+
+  // 处理应用在后台/关闭时点击通知
+  Notifications.getLastNotificationResponseAsync().then((response) => {
+    if (response) {
+      const data = response.notification.request.content.data;
+      if (data?.url) {
+        navigate(data.url as string);
+      }
+    }
+  }).catch(() => {
+    // 忽略错误（可能在某些平台上不可用）
+  });
+
+  return () => {
+    subscriptionForeground.remove();
+  };
+}
