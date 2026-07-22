@@ -332,7 +332,11 @@ export default function RemindersScreen() {
     Alert.alert('随访提醒测试', `${summary}\n\n${testMessage}\n\n通知功能正常！`);
   };
 
-  const overdueReminders = reminders.filter((r) => getDaysUntil(r.scheduled_date) < 0);
+  // 只显示逾期30天以内的，超过30天的不再展示
+  const overdueReminders = reminders.filter((r) => {
+    const days = getDaysUntil(r.scheduled_date);
+    return days < 0 && days >= -30;
+  });
   const upcomingReminders = reminders.filter((r) => getDaysUntil(r.scheduled_date) >= 0);
 
   const renderReminderItem = ({ item }: { item: Reminder }) => {
