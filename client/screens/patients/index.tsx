@@ -273,7 +273,7 @@ export default function PatientsScreen() {
             tintColor="#059669"
           />
         }
-        ListFooterComponent={<View style={{ height: 68 + insets.bottom + 20 }} />}
+        ListFooterComponent={<View style={{ height: 20 }} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <View style={styles.emptyIconContainer}>
@@ -285,13 +285,13 @@ export default function PatientsScreen() {
         }
       />
 
-      {/* Fixed bottom button */}
+      {/* Bottom button */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
         <TouchableOpacity
           style={styles.allPatientsBtn}
           onPress={() => router.push('/all-patients')}
         >
-          <FontAwesome6 name="users" size={18} color="#059669" />
+          <FontAwesome6 name="users" size={16} color="#059669" />
           <Text style={styles.allPatientsBtnText}>全部患者</Text>
           <Text style={styles.allPatientsCount}>({patients.length})</Text>
         </TouchableOpacity>
@@ -529,35 +529,30 @@ const styles = StyleSheet.create({
     color: '#D97706',
   },
   bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     paddingHorizontal: 16,
-    paddingTop: 10,
-    backgroundColor: '#F8FAFC',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(5,150,105,0.08)',
+    paddingTop: 8,
   },
   allPatientsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(5,150,105,0.15)',
     shadowColor: '#059669',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
+    alignSelf: 'center',
   },
   allPatientsBtnText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     color: '#059669',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   allPatientsCount: {
     fontSize: 13,
