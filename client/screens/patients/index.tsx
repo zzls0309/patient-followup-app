@@ -97,12 +97,13 @@ export default function PatientsScreen() {
     }, [fetchPatients, checkReminders])
   );
 
-  // Filter patients with visits in the next 7 days (including overdue)
+  // Filter patients: overdue within 7 days OR upcoming within 7 days
   const upcomingPatients = useMemo(() => {
     return patients.filter((p) => {
       const days = getDaysUntil(p.next_step_date);
       if (days === null) return false;
-      return days <= 7; // Include overdue (negative) and next 7 days
+      // Show: overdue up to 7 days (days >= -7) OR upcoming within 7 days (days <= 7)
+      return days >= -7 && days <= 7;
     }).sort((a, b) => {
       // Sort by days until: overdue first, then today, then upcoming
       const daysA = getDaysUntil(a.next_step_date) ?? 999;
