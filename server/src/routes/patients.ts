@@ -509,6 +509,31 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// POST /api/v1/patients/batch-delete - 批量删除患者
+router.post('/batch-delete', async (req, res) => {
+  try {
+    const client = getSupabaseClient();
+    const { ids } = req.body as { ids: number[] };
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: '请提供要删除的患者ID列表' });
+    }
+
+    // 先删除所有相关步骤
+    const { error: stepsError } = await client.from('followup_steps').delete().in('patient_id', ids);
+    if (stepsError) throw new Error(`删除步骤失败: ${stepsError.message}`);
+
+    // 再删除患者
+    const { data: patients, error: patientsError } = await client
+      .from('patients').delete().in('id', ids).select();
+    if (patientsError) throw new Error(`删除患者失败: ${patientsError.message}`);
+
+    res.json({ message: `成功删除 ${patients?.length || 0} 位患者`, count: patients?.length || 0 });
+  } catch (err) {
+    console.error('Error batch deleting patients:', err);
+    res.status(500).json({ error: '批量删除失败' });
+  }
+});
+
 // DELETE /api/v1/patients/:id - 删除患者
 router.delete('/:id', async (req, res) => {
   try {

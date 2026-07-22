@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
@@ -53,6 +54,9 @@ export default function AllPatientsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [deleting, setDeleting] = useState(false);
   const router = useSafeRouter();
   const insets = useSafeAreaInsets();
 
@@ -91,20 +95,91 @@ export default function AllPatientsScreen() {
     fetchPatients();
   };
 
+  const toggleSelectMode = () => {
+    setSelectMode(!selectMode);
+    setSelectedIds(new Set());
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAll = () => {
+    if (selectedIds.size === filteredPatients.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredPatients.map((p) => p.id)));
+    }
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    Alert.alert(
+      '确认删除',
+      `确定要删除选中的 ${selectedIds.size} 位患者吗？此操作不可撤销。`,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '删除',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              const response = await fetch(`${API_BASE}/patients/batch-delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: Array.from(selectedIds) }),
+              });
+              if (!response.ok) throw new Error('删除失败');
+              setSelectMode(false);
+              setSelectedIds(new Set());
+              fetchPatients();
+            } catch (err) {
+              console.error('Batch delete failed:', err);
+              Alert.alert('错误', '删除失败，请重试');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderPatientCard = ({ item }: { item: Patient }) => {
     const completed = parseInt(item.completed_steps);
     const total = parseInt(item.total_steps);
     const progress = total > 0 ? completed / total : 0;
     const daysUntil = getDaysUntil(item.next_step_date);
     const status = getStatusInfo(daysUntil);
+    const isSelected = selectedIds.has(item.id);
 
     return (
       <TouchableOpacity
         activeOpacity={0.75}
-        onPress={() => router.push(`/patient-detail`, { patientId: item.id })}
-        style={styles.card}
+        onPress={() => {
+          if (selectMode) {
+            toggleSelect(item.id);
+          } else {
+            router.push(`/patient-detail`, { patientId: item.id });
+          }
+        }}
+        style={[styles.card, selectMode && isSelected && styles.cardSelected]}
       >
         <View style={styles.cardHeader}>
+          {selectMode && (
+            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+              {isSelected && <FontAwesome6 name="check" size={12} color="#fff" />}
+            </View>
+          )}
           <View style={styles.patientInfo}>
             <View style={styles.avatarContainer}>
               <FontAwesome6 name="user" size={16} color="#059669" />
@@ -190,10 +265,16 @@ export default function AllPatientsScreen() {
           <View style={styles.headerTitleSection}>
             <Text style={styles.headerTitle}>全部患者</Text>
             <Text style={styles.headerSubtitle}>
-              共 {patients.length} 位患者
+              {selectMode ? `已选择 ${selectedIds.size} 位` : `共 ${patients.length} 位患者`}
             </Text>
           </View>
-          <View style={{ width: 36 }} />
+          <TouchableOpacity onPress={toggleSelectMode} style={styles.selectBtn}>
+            <FontAwesome6
+              name={selectMode ? 'xmark' : 'circle-check'}
+              size={20}
+              color="#fff"
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Search bar */}
@@ -225,6 +306,7 @@ export default function AllPatientsScreen() {
         contentContainerStyle={[
           styles.listContent,
           filteredPatients.length === 0 && styles.emptyContainer,
+          selectMode && { paddingBottom: 100 },
         ]}
         refreshControl={
           <RefreshControl
@@ -232,6 +314,16 @@ export default function AllPatientsScreen() {
             onRefresh={onRefresh}
             tintColor="#059669"
           />
+        }
+        ListHeaderComponent={
+          selectMode && filteredPatients.length > 0 ? (
+            <TouchableOpacity style={styles.selectAllRow} onPress={selectAll}>
+              <View style={[styles.checkbox, selectedIds.size === filteredPatients.length && styles.checkboxSelected]}>
+                {selectedIds.size === filteredPatients.length && <FontAwesome6 name="check" size={12} color="#fff" />}
+              </View>
+              <Text style={styles.selectAllText}>全选</Text>
+            </TouchableOpacity>
+          ) : null
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -243,6 +335,29 @@ export default function AllPatientsScreen() {
           </View>
         }
       />
+
+      {/* Bottom action bar for delete */}
+      {selectMode && selectedIds.size > 0 && (
+        <View style={[styles.bottomActionBar, { paddingBottom: insets.bottom + 12 }]}>
+          <Text style={styles.bottomActionText}>
+            已选择 {selectedIds.size} 位患者
+          </Text>
+          <TouchableOpacity
+            style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
+            onPress={handleBatchDelete}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <FontAwesome6 name="trash" size={16} color="#fff" />
+                <Text style={styles.deleteBtnText}>删除</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
     </Screen>
   );
 }
@@ -265,6 +380,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.20)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectBtn: {
     width: 36,
     height: 36,
     borderRadius: 12,
@@ -447,5 +570,77 @@ const styles = StyleSheet.create({
   emptyDesc: {
     fontSize: 13,
     color: '#94A3B8',
+  },
+  // Selection mode styles
+  cardSelected: {
+    borderWidth: 2,
+    borderColor: '#059669',
+    backgroundColor: '#F0FDF4',
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#CBD5E1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  checkboxSelected: {
+    backgroundColor: '#059669',
+    borderColor: '#059669',
+  },
+  selectAllRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  selectAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  bottomActionBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  bottomActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#DC2626',
+  },
+  deleteBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
