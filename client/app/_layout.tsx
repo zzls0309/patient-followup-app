@@ -1,8 +1,10 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { LogBox } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { Provider } from '@/components/Provider';
+import { initPushNotifications } from '@/utils/notifications';
 
 import '../global.css';
 
@@ -11,6 +13,11 @@ LogBox.ignoreLogs([
 ]);
 
 export default function RootLayout() {
+  // 初始化推送通知
+  useEffect(() => {
+    initPushNotifications().catch(console.error);
+  }, []);
+
   return (
     <Provider>
       <Stack

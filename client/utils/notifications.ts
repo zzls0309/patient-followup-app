@@ -2,9 +2,12 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const PUSH_TOKEN_KEY = 'push_token';
+const PUSH_TOKEN_REGISTERED_KEY = 'push_token_registered';
 const REMINDER_ENABLED_KEY = 'reminder_enabled';
 const REMINDER_TIME_KEY = 'reminder_time';
-const LAST_REMINDER_DATE_KEY = 'last_reminder_date';
+
+const EXPO_PUBLIC_BACKEND_BASE_URL = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
 
 // 配置通知处理器 - 控制应用在前台时的通知行为
 Notifications.setNotificationHandler({
@@ -17,7 +20,35 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// 请求推送通知权限
+// 注册推送令牌到后端服务器
+async function registerTokenWithBackend(token: string): Promise<void> {
+  if (!EXPO_PUBLIC_BACKEND_BASE_URL) {
+    console.log('Backend URL not configured, skipping token registration');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/patients/push/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token,
+        platform: Platform.OS,
+      }),
+    });
+
+    if (response.ok) {
+      await AsyncStorage.setItem(PUSH_TOKEN_REGISTERED_KEY, 'true');
+      console.log('Push token registered with backend');
+    } else {
+      console.error('Failed to register push token:', await response.text());
+    }
+  } catch (error) {
+    console.error('Error registering push token with backend:', error);
+  }
+}
+
+// 请求推送通知权限并注册令牌
 export async function registerForPushNotifications(): Promise<string | null> {
   let token: string | null = null;
 
@@ -39,12 +70,12 @@ export async function registerForPushNotifications(): Promise<string | null> {
   // 获取推送令牌
   try {
     const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: process.env.EXPO_PUBLIC_PROJECT_ID || 'your-project-id',
+      projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
     });
     token = tokenData.data;
-    console.log('Push token:', token);
+    console.log('Expo Push token:', token);
   } catch (error) {
-    console.error('Error getting push token:', error);
+    console.error('Error getting Expo push token:', error);
     // 如果获取 Expo push token 失败，尝试获取设备 push token
     try {
       const deviceToken = await Notifications.getDevicePushTokenAsync();
@@ -65,12 +96,38 @@ export async function registerForPushNotifications(): Promise<string | null> {
     });
   }
 
+  // 保存令牌并注册到后端
+  if (token) {
+    await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+    await registerTokenWithBackend(token);
+  }
+
   return token;
 }
 
-// 安排本地通知 - 每天在指定时间发送
+// 初始化推送通知（应用启动时调用）
+export async function initPushNotifications(): Promise<string | null> {
+  // 检查是否已注册过令牌
+  const registered = await AsyncStorage.getItem(PUSH_TOKEN_REGISTERED_KEY);
+  const savedToken = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+
+  if (registered && savedToken) {
+    // 已注册过，更新后端活跃时间
+    await registerTokenWithBackend(savedToken);
+    return savedToken;
+  }
+
+  // 未注册过，请求权限并注册
+  return await registerForPushNotifications();
+}
+
+// 获取保存的推送令牌
+export async function getPushToken(): Promise<string | null> {
+  return await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+}
+
+// 安排本地通知 - 每天在指定时间发送（备用，当后端推送不可用时）
 export async function scheduleDailyReminder(hour: number, minute: number): Promise<string | null> {
-  // 取消所有现有通知
   await Notifications.cancelAllScheduledNotificationsAsync();
 
   const notificationId = await Notifications.scheduleNotificationAsync({
@@ -106,7 +163,7 @@ export async function sendImmediateNotification(title: string, body: string): Pr
       sound: true,
       priority: Notifications.AndroidNotificationPriority.HIGH,
     },
-    trigger: null, // 立即发送
+    trigger: null,
   });
 }
 
@@ -119,14 +176,27 @@ export async function getNotificationsEnabled(): Promise<boolean> {
 // 设置通知开关
 export async function setNotificationsEnabled(enabled: boolean): Promise<void> {
   await AsyncStorage.setItem(REMINDER_ENABLED_KEY, enabled.toString());
-  
+
+  const token = await getPushToken();
+
+  // 同步设置到后端
+  if (token && EXPO_PUBLIC_BACKEND_BASE_URL) {
+    try {
+      await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/patients/push/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, enabled }),
+      });
+    } catch (error) {
+      console.error('Error updating push settings:', error);
+    }
+  }
+
   if (enabled) {
-    // 开启提醒时，安排每日通知
     const time = await AsyncStorage.getItem(REMINDER_TIME_KEY) || '09:00';
     const [hour, minute] = time.split(':').map(Number);
     await scheduleDailyReminder(hour, minute);
   } else {
-    // 关闭提醒时，取消所有通知
     await cancelAllNotifications();
   }
 }
@@ -140,57 +210,94 @@ export async function getReminderTime(): Promise<string> {
 // 设置提醒时间
 export async function setReminderTime(time: string): Promise<void> {
   await AsyncStorage.setItem(REMINDER_TIME_KEY, time);
-  
-  // 如果提醒已开启，重新安排通知
+
+  const token = await getPushToken();
+  const [hour, minute] = time.split(':').map(Number);
+
+  // 同步设置到后端
+  if (token && EXPO_PUBLIC_BACKEND_BASE_URL) {
+    try {
+      await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/patients/push/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, enabled: true, hour, minute }),
+      });
+    } catch (error) {
+      console.error('Error updating push settings:', error);
+    }
+  }
+
+  // 同时设置本地通知作为备用
   const enabled = await AsyncStorage.getItem(REMINDER_ENABLED_KEY);
   if (enabled === 'true') {
-    const [hour, minute] = time.split(':').map(Number);
     await scheduleDailyReminder(hour, minute);
   }
 }
 
-// 获取提醒设置
-export async function getReminderSettings(): Promise<{ enabled: boolean; time: string }> {
-  const enabled = await getNotificationsEnabled();
-  const time = await getReminderTime();
-  return { enabled, time };
-}
+// 触发后端检查并发送提醒（用于测试）
+export async function triggerBackendReminder(): Promise<void> {
+  if (!EXPO_PUBLIC_BACKEND_BASE_URL) return;
 
-// 获取提醒摘要（用于显示）
-export async function getReminderSummary(): Promise<string> {
-  const settings = await getReminderSettings();
-  if (!settings.enabled) {
-    return '提醒已关闭';
+  try {
+    await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/patients/push/check-and-remind`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error triggering backend reminder:', error);
   }
-  return `每天 ${settings.time} 提醒`;
 }
 
-// 检查是否应该显示应用内提醒（备用机制）
+// 发送测试推送通知（用于测试）
+export async function sendTestPushNotification(): Promise<void> {
+  if (!EXPO_PUBLIC_BACKEND_BASE_URL) return;
+
+  try {
+    await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/patients/push/send-test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error sending test push notification:', error);
+  }
+}
+
+// ============ 应用内提醒相关函数 ============
+
+const LAST_CHECKED_DATE_KEY = 'last_checked_date';
+
+// 获取北京时间的日期字符串
+function getTodayDateStr(): string {
+  const now = new Date();
+  const bjOffset = 8 * 60;
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const bjTime = new Date(utc + bjOffset * 60000);
+  return bjTime.toISOString().split('T')[0];
+}
+
+// 判断是否应该显示提醒（每天只显示一次）
 export async function shouldShowReminder(): Promise<boolean> {
-  const enabled = await getNotificationsEnabled();
-  if (!enabled) return false;
-
-  const now = new Date();
-  const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-  const todayStr = `${beijingTime.getUTCFullYear()}-${String(beijingTime.getUTCMonth() + 1).padStart(2, '0')}-${String(beijingTime.getUTCDate()).padStart(2, '0')}`;
-
-  const lastReminderDate = await AsyncStorage.getItem(LAST_REMINDER_DATE_KEY);
-  if (lastReminderDate === todayStr) return false;
-
-  const time = await getReminderTime();
-  const [reminderHour, reminderMinute] = time.split(':').map(Number);
-  const currentHour = beijingTime.getUTCHours();
-  const currentMinute = beijingTime.getUTCMinutes();
-  const currentTotalMinutes = currentHour * 60 + currentMinute;
-  const reminderTotalMinutes = reminderHour * 60 + reminderMinute;
-
-  return currentTotalMinutes >= reminderTotalMinutes;
+  const lastChecked = await AsyncStorage.getItem(LAST_CHECKED_DATE_KEY);
+  const today = getTodayDateStr();
+  return lastChecked !== today;
 }
 
-// 标记今天已提醒
+// 标记今天已检查过提醒
 export async function markTodayChecked(): Promise<void> {
-  const now = new Date();
-  const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
-  const todayStr = `${beijingTime.getUTCFullYear()}-${String(beijingTime.getUTCMonth() + 1).padStart(2, '0')}-${String(beijingTime.getUTCDate()).padStart(2, '0')}`;
-  await AsyncStorage.setItem(LAST_REMINDER_DATE_KEY, todayStr);
+  const today = getTodayDateStr();
+  await AsyncStorage.setItem(LAST_CHECKED_DATE_KEY, today);
+}
+
+// 获取提醒摘要（用于测试显示）
+export async function getReminderSummary(): Promise<string> {
+  const enabled = await getNotificationsEnabled();
+  const time = await getReminderTime();
+  const token = await getPushToken();
+
+  return [
+    `提醒开关: ${enabled ? '已开启' : '已关闭'}`,
+    `提醒时间: ${time}`,
+    `推送令牌: ${token ? '已注册' : '未注册'}`,
+    `令牌类型: ${token?.startsWith('ExponentPushToken') ? 'Expo Push Token' : token ? 'Device Token' : '无'}`,
+  ].join('\n');
 }

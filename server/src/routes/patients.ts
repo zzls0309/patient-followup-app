@@ -612,4 +612,239 @@ router.put('/:patientId/steps/:stepId', async (req, res) => {
   }
 });
 
+// ============ 推送通知相关接口 ============
+
+// 注册推送令牌
+router.post('/push/register', async (req, res) => {
+  try {
+    const { token, deviceId, platform } = req.body as {
+      token: string;
+      deviceId?: string;
+      platform?: string;
+    };
+
+    if (!token) {
+      return res.status(400).json({ error: '请提供推送令牌' });
+    }
+
+    const supabase = getSupabaseClient();
+
+    // 使用 upsert 确保令牌存在且更新最后活跃时间
+    const { error } = await supabase
+      .from('device_push_tokens')
+      .upsert(
+        {
+          token,
+          device_id: deviceId || null,
+          platform: platform || null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'token' }
+      );
+
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error registering push token:', err);
+    res.status(500).json({ error: '注册推送令牌失败' });
+  }
+});
+
+// 更新推送提醒设置
+router.post('/push/settings', async (req, res) => {
+  try {
+    const { token, enabled, hour, minute } = req.body as {
+      token: string;
+      enabled: boolean;
+      hour?: number;
+      minute?: number;
+    };
+
+    if (!token) {
+      return res.status(400).json({ error: '请提供推送令牌' });
+    }
+
+    const supabase = getSupabaseClient();
+    const updateData: Record<string, unknown> = {
+      reminder_enabled: enabled,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (hour !== undefined) updateData.reminder_hour = hour;
+    if (minute !== undefined) updateData.reminder_minute = minute;
+
+    const { error } = await supabase
+      .from('device_push_tokens')
+      .update(updateData)
+      .eq('token', token);
+
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error updating push settings:', err);
+    res.status(500).json({ error: '更新提醒设置失败' });
+  }
+});
+
+// 注销推送令牌
+router.post('/push/unregister', async (req, res) => {
+  try {
+    const { token } = req.body as { token: string };
+
+    if (!token) {
+      return res.status(400).json({ error: '请提供推送令牌' });
+    }
+
+    const supabase = getSupabaseClient();
+    const { error } = await supabase
+      .from('device_push_tokens')
+      .delete()
+      .eq('token', token);
+
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error unregistering push token:', err);
+    res.status(500).json({ error: '注销推送令牌失败' });
+  }
+});
+
+// 发送推送通知到所有已注册设备
+async function sendPushNotifications(title: string, body: string): Promise<void> {
+  const supabase = getSupabaseClient();
+
+  // 获取所有启用了提醒的设备令牌
+  const { data: tokens, error } = await supabase
+    .from('device_push_tokens')
+    .select('token')
+    .eq('reminder_enabled', true);
+
+  if (error || !tokens || tokens.length === 0) {
+    console.log('No devices to notify');
+    return;
+  }
+
+  // 使用 Expo Push API 发送通知
+  const messages = tokens.map((t) => ({
+    to: t.token,
+    sound: 'default' as const,
+    title,
+    body,
+    priority: 'high' as const,
+  }));
+
+  try {
+    const response = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(messages),
+    });
+
+    const result = await response.json();
+    console.log('Push notification result:', result);
+  } catch (err) {
+    console.error('Error sending push notifications:', err);
+  }
+}
+
+// 手动触发推送通知（用于测试）
+router.post('/push/send-test', async (_req, res) => {
+  try {
+    await sendPushNotifications('随访提醒测试', '这是一条测试通知，推送功能正常工作！');
+    res.json({ success: true, message: '测试通知已发送' });
+  } catch (err) {
+    console.error('Error sending test notification:', err);
+    res.status(500).json({ error: '发送测试通知失败' });
+  }
+});
+
+// 检查今日随诊并发送提醒（可由定时任务调用）
+router.post('/push/check-and-remind', async (_req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const today = getTodayBJ();
+
+    // 查询今天有待随诊的患者
+    const { data: todaySteps, error } = await supabase
+      .from('followup_steps')
+      .select('patient_id, step_number')
+      .eq('scheduled_date', today)
+      .is('completed_date', null);
+
+    if (error) throw error;
+
+    if (!todaySteps || todaySteps.length === 0) {
+      res.json({ success: true, message: '今天没有待随诊的患者', count: 0 });
+      return;
+    }
+
+    // 获取患者姓名
+    const patientIds = [...new Set(todaySteps.map((s) => s.patient_id))];
+    const { data: patients } = await supabase
+      .from('patients')
+      .select('id, name')
+      .in('id', patientIds);
+
+    const patientNames = patients?.map((p) => p.name).join('、') || '';
+    const stepLabels: Record<string, string> = {
+      '1': '首次治疗',
+      '2': '二次治疗',
+      '3': '三次治疗',
+      '4': '拍照随访',
+    };
+
+    const stepTypes = [...new Set(todaySteps.map((s) => s.step_number))];
+    const stepDesc = stepTypes.map((n) => stepLabels[String(n)] || `步骤${n}`).join('、');
+
+    const title = '今日随诊提醒';
+    const body = `${patientNames} 今天有${stepDesc}安排，请及时处理。`;
+
+    await sendPushNotifications(title, body);
+
+    // 更新最后通知日期
+    await supabase
+      .from('device_push_tokens')
+      .update({ last_notified_date: today })
+      .eq('reminder_enabled', true);
+
+    res.json({ success: true, message: '提醒已发送', count: patientIds.length });
+  } catch (err) {
+    console.error('Error checking and reminding:', err);
+    res.status(500).json({ error: '检查并提醒失败' });
+  }
+});
+
+// 获取推送提醒设置
+router.get('/push/settings/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const supabase = getSupabaseClient();
+
+    const { data, error } = await supabase
+      .from('device_push_tokens')
+      .select('reminder_enabled, reminder_hour, reminder_minute')
+      .eq('token', token)
+      .single();
+
+    if (error || !data) {
+      return res.json({ enabled: true, hour: 8, minute: 0 });
+    }
+
+    res.json({
+      enabled: data.reminder_enabled,
+      hour: data.reminder_hour ?? 8,
+      minute: data.reminder_minute ?? 0,
+    });
+  } catch (err) {
+    console.error('Error getting push settings:', err);
+    res.status(500).json({ error: '获取提醒设置失败' });
+  }
+});
+
 export default router;
