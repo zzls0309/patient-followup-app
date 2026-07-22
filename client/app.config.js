@@ -76,6 +76,12 @@ module.exports = ({ config }) => {
           sounds: [],
         },
       ],
+      [
+        'expo-document-picker',
+        {
+          iCloudContainerEnvironment: 'Production',
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,
