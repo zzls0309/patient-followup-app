@@ -261,6 +261,7 @@ export default function PatientsScreen() {
         data={upcomingPatients}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderPatientCard}
+        style={{ flex: 1 }}
         contentContainerStyle={[
           styles.listContent,
           upcomingPatients.length === 0 && styles.emptyContainer,
@@ -345,7 +346,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 160,
+    paddingBottom: 200,
   },
   emptyContainer: {
     flex: 1,
