@@ -128,13 +128,20 @@ export default function AddPatientScreen() {
           <View style={styles.rowContainer}>
             <View style={[styles.fieldCard, { flex: 1, marginRight: 10 }]}>
               <Text style={styles.fieldLabel}>性别</Text>
-              <TextInput
-                style={styles.fieldInput}
-                placeholder="男/女"
-                placeholderTextColor="#CBD5E1"
-                value={gender}
-                onChangeText={setGender}
-              />
+              <View style={styles.genderSelector}>
+                <TouchableOpacity
+                  style={[styles.genderOption, gender === '男' && styles.genderOptionActive]}
+                  onPress={() => setGender('男')}
+                >
+                  <Text style={[styles.genderOptionText, gender === '男' && styles.genderOptionTextActive]}>男</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.genderOption, gender === '女' && styles.genderOptionActive]}
+                  onPress={() => setGender('女')}
+                >
+                  <Text style={[styles.genderOptionText, gender === '女' && styles.genderOptionTextActive]}>女</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             <View style={[styles.fieldCard, { flex: 1, marginLeft: 10 }]}>
               <Text style={styles.fieldLabel}>年龄</Text>
@@ -334,6 +341,31 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     padding: 0,
     fontWeight: '500',
+  },
+  genderSelector: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  genderOption: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  genderOptionActive: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#059669',
+  },
+  genderOptionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  genderOptionTextActive: {
+    color: '#059669',
   },
   hintCard: {
     flexDirection: 'row',
