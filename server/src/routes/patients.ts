@@ -294,16 +294,16 @@ router.post('/import', upload.single('file'), async (req, res) => {
         if (patientError) throw new Error(patientError.message);
 
         // 收集所有已完成的日期
-        const completedDates: { step_number: number; step_type: string; completed_date: string }[] = [];
-        completedDates.push({ step_number: 1, step_type: 'treatment_1', completed_date: parsedFirstDate });
+        const completedDates: { step_number: number; step_type: string; scheduled_date: string; completed_date: string }[] = [];
+        completedDates.push({ step_number: 1, step_type: 'treatment_1', scheduled_date: parsedFirstDate, completed_date: parsedFirstDate });
         if (parsedSecondDate) {
-          completedDates.push({ step_number: 2, step_type: 'treatment_2', completed_date: parsedSecondDate });
+          completedDates.push({ step_number: 2, step_type: 'treatment_2', scheduled_date: parsedSecondDate, completed_date: parsedSecondDate });
         }
         if (parsedThirdDate) {
-          completedDates.push({ step_number: 3, step_type: 'treatment_3', completed_date: parsedThirdDate });
+          completedDates.push({ step_number: 3, step_type: 'treatment_3', scheduled_date: parsedThirdDate, completed_date: parsedThirdDate });
         }
         if (parsedPhotoDate) {
-          completedDates.push({ step_number: 4, step_type: 'photo', completed_date: parsedPhotoDate });
+          completedDates.push({ step_number: 4, step_type: 'photo', scheduled_date: parsedPhotoDate, completed_date: parsedPhotoDate });
         }
 
         // 找到最后完成的日期
@@ -311,7 +311,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
         const allCompleted = completedDates.length >= 4;
 
         // 生成步骤
-        const stepsToInsert: { patient_id: number; step_number: number; step_type: string; scheduled_date: string; completed_date?: string; status: string }[] = [];
+        const stepsToInsert: { patient_id: number; step_number: number; step_type: string; scheduled_date: string; completed_date?: string }[] = [];
 
         // 添加已完成的步骤
         for (const cd of completedDates) {
@@ -319,9 +319,8 @@ router.post('/import', upload.single('file'), async (req, res) => {
             patient_id: patient.id,
             step_number: cd.step_number,
             step_type: cd.step_type,
-            scheduled_date: cd.completed_date,
+            scheduled_date: cd.scheduled_date,
             completed_date: cd.completed_date,
-            status: 'completed',
           });
         }
 
@@ -334,7 +333,6 @@ router.post('/import', upload.single('file'), async (req, res) => {
               step_number: s.step_number,
               step_type: s.step_type,
               scheduled_date: s.scheduled_date,
-              status: 'scheduled',
             });
           }
         } else {
@@ -347,7 +345,6 @@ router.post('/import', upload.single('file'), async (req, res) => {
               step_number: s.step_number,
               step_type: s.step_type,
               scheduled_date: s.scheduled_date,
-              status: 'scheduled',
             });
           }
         }
