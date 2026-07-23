@@ -58,7 +58,18 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
   // 如果未授权，请求权限
   if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
+    const { status } = await Notifications.requestPermissionsAsync({
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+      },
+      android: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+      },
+    });
     finalStatus = status;
   }
 
@@ -89,10 +100,14 @@ export async function registerForPushNotifications(): Promise<string | null> {
   // Android 需要设置通知渠道
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
-      name: '默认',
+      name: '随访提醒',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#059669',
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      showBadge: true,
+      enableVibrate: true,
+      enableLights: true,
     });
   }
 
