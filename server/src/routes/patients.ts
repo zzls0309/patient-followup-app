@@ -332,7 +332,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
               scheduled_date: s.scheduled_date,
             });
           }
-        } else {
+        } else if (completedDates.length > 0) {
           // 根据最后完成的日期推算后续步骤
           const lastStepNumber = completedDates[completedDates.length - 1].step_number;
           const remainingSteps = generateStepDates(lastCompletedDate).filter(s => s.step_number > lastStepNumber);
