@@ -41,8 +41,13 @@ function getDaysUntil(dateStr: string | null): number | null {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function getStatusInfo(daysUntil: number | null) {
-  if (daysUntil === null) return { label: '已完成', color: '#059669', bg: '#E8F5E9' };
+function getStatusInfo(daysUntil: number | null, completedSteps: number = 0) {
+  if (daysUntil === null) {
+    if (completedSteps === 0) {
+      return { label: '未开始治疗', color: '#6B7280', bg: '#F3F4F6' };
+    }
+    return { label: '已完成', color: '#059669', bg: '#E8F5E9' };
+  }
   if (daysUntil < 0) return { label: `逾期${Math.abs(daysUntil)}天`, color: '#DC2626', bg: '#FEE2E2' };
   if (daysUntil === 0) return { label: '今天', color: '#D97706', bg: '#FEF3C7' };
   if (daysUntil <= 3) return { label: `${daysUntil}天后`, color: '#D97706', bg: '#FEF3C7' };
@@ -159,7 +164,7 @@ export default function AllPatientsScreen() {
     const total = parseInt(item.total_steps);
     const progress = total > 0 ? completed / total : 0;
     const daysUntil = getDaysUntil(item.next_step_date);
-    const status = getStatusInfo(daysUntil);
+    const status = getStatusInfo(daysUntil, item.completed_steps || 0);
     const isSelected = selectedIds.has(item.id);
 
     return (
