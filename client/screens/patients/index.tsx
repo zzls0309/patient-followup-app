@@ -61,9 +61,15 @@ export default function PatientsScreen() {
     try {
       const response = await fetch(`${API_BASE}/patients`);
       const data = await response.json();
-      setPatients(data);
+      if (Array.isArray(data)) {
+        setPatients(data);
+      } else {
+        console.error('API returned non-array:', data);
+        setPatients([]);
+      }
     } catch (err) {
       console.error('Failed to fetch patients:', err);
+      setPatients([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -80,7 +86,7 @@ export default function PatientsScreen() {
     try {
       const response = await fetch(`${API_BASE}/patients/reminders/upcoming`);
       const data = await response.json();
-      if (data.length > 0) {
+      if (Array.isArray(data) && data.length > 0) {
         setReminderCount(data.length);
         setShowReminder(true);
         await markTodayChecked();
