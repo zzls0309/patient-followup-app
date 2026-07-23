@@ -321,19 +321,8 @@ router.post('/import', upload.single('file'), async (req, res) => {
           });
         }
 
-        // 如果4次都完成，创建新一轮随访
-        if (allCompleted) {
-          const newCycleDates = generateStepDates(lastCompletedDate);
-          for (const s of newCycleDates) {
-            stepsToInsert.push({
-              patient_id: patient.id,
-              step_number: s.step_number,
-              step_type: s.step_type,
-              scheduled_date: s.scheduled_date,
-            });
-          }
-        } else if (completedDates.length > 0) {
-          // 根据最后完成的日期推算后续步骤
+        // 如果还有未完成的步骤（少于 4 次），根据最后完成的日期推算后续步骤
+        if (completedDates.length > 0 && completedDates.length < 4) {
           const lastStepNumber = completedDates[completedDates.length - 1].step_number;
           const remainingSteps = generateStepDates(lastCompletedDate).filter(s => s.step_number > lastStepNumber);
           for (const s of remainingSteps) {
