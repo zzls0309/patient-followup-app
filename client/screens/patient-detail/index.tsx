@@ -13,7 +13,7 @@ import {
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { Screen } from '@/components/Screen';
-import { EditPatientModal } from '@/components/EditPatientModal';
+import EditPatientModal from '@/components/EditPatientModal';
 import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
