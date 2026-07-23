@@ -17,7 +17,6 @@ import { EditPatientModal } from '@/components/EditPatientModal';
 import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import EditPatientModal from '@/components/EditPatientModal';
 
 const API_BASE = `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1`;
 
