@@ -13,9 +13,11 @@ import {
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { Screen } from '@/components/Screen';
+import { EditPatientModal } from '@/components/EditPatientModal';
 import { useSafeRouter, useSafeSearchParams } from '@/hooks/useSafeRouter';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import EditPatientModal from '@/components/EditPatientModal';
 
 const API_BASE = `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1`;
 
@@ -358,6 +360,7 @@ export default function PatientDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [pendingStep, setPendingStep] = useState<FollowupStep | null>(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
   const router = useSafeRouter();
   const insets = useSafeAreaInsets();
 
@@ -467,6 +470,11 @@ export default function PatientDetailScreen() {
     ]);
   };
 
+  const handleEditSuccess = () => {
+    setEditModalVisible(false);
+    fetchPatient();
+  };
+
   if (loading) {
     return (
       <Screen>
@@ -504,9 +512,14 @@ export default function PatientDetailScreen() {
             <FontAwesome6 name="chevron-left" size={18} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>随访详情</Text>
-          <TouchableOpacity onPress={handleDeletePatient} style={styles.headerBtn}>
-            <FontAwesome6 name="trash" size={16} color="#FCA5A5" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => setEditModalVisible(true)} style={styles.headerBtn}>
+              <FontAwesome6 name="pen" size={16} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDeletePatient} style={styles.headerBtn}>
+              <FontAwesome6 name="trash" size={16} color="#FCA5A5" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.patientSummary}>
@@ -674,6 +687,15 @@ export default function PatientDetailScreen() {
           setPendingStep(null);
         }}
       />
+
+      {patient && (
+        <EditPatientModal
+          visible={editModalVisible}
+          patient={patient}
+          onClose={() => setEditModalVisible(false)}
+          onSave={handleEditSuccess}
+        />
+      )}
     </Screen>
   );
 }
@@ -699,6 +721,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   headerBtn: {
     width: 34,
