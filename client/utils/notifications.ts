@@ -94,9 +94,6 @@ export async function registerForPushNotifications(): Promise<string | null> {
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#059669',
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-      showBadge: true,
-      enableVibrate: true,
-      enableLights: true,
     });
   }
 
