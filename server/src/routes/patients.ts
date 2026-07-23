@@ -244,6 +244,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
       const phone = String(row['电话'] || row['手机'] || row['phone'] || '').trim();
       const gender = String(row['性别'] || row['gender'] || '').trim();
       const notes = String(row['备注'] || row['notes'] || '').trim();
+      const age = row['年龄'] || row['age'] ? parseInt(String(row['年龄'] || row['age'])) : undefined;
       const firstDate = String(row['首次治疗日期'] || row['firstTreatmentDate'] || row['首次治疗'] || '').trim();
       const secondDate = String(row['二次治疗日期'] || row['secondTreatmentDate'] || row['二次治疗'] || '').trim();
       const thirdDate = String(row['三次治疗日期'] || row['thirdTreatmentDate'] || row['三次治疗'] || '').trim();
@@ -282,7 +283,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
         // 创建患者
         const { data: patient, error: patientError } = await client
           .from('patients')
-          .insert({ name, phone, gender, notes })
+          .insert({ name, phone, gender, notes, age })
           .select()
           .single();
         if (patientError) throw new Error(patientError.message);
@@ -385,7 +386,7 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/v1/patients - 创建患者
 router.post('/', async (req, res) => {
-  const { name, phone, gender, notes, firstTreatmentDate, treatment2Date, treatment3Date, photoDate } = req.body;
+  const { name, phone, gender, notes, age, firstTreatmentDate, treatment2Date, treatment3Date, photoDate } = req.body;
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
   }
@@ -400,7 +401,7 @@ router.post('/', async (req, res) => {
   try {
     const client = getSupabaseClient();
     const { data: patient, error: patientError } = await client
-      .from('patients').insert({ name, phone: phone || '', gender: gender || '', notes: notes || '' })
+      .from('patients').insert({ name, phone: phone || '', gender: gender || '', notes: notes || '', age: age || 0 })
       .select().single();
     if (patientError) throw new Error(`创建患者失败: ${patientError.message}`);
 
@@ -492,7 +493,7 @@ router.put('/:id', async (req, res) => {
   try {
     const client = getSupabaseClient();
     const { id } = req.params;
-    const { name, phone, gender, notes, firstTreatmentDate, treatment2Date, treatment3Date, photoDate } = req.body;
+    const { name, phone, gender, notes, age, firstTreatmentDate, treatment2Date, treatment3Date, photoDate } = req.body;
 
     // 获取当前患者信息
     const { data: currentPatient, error: fetchError } = await client
@@ -505,6 +506,7 @@ router.put('/:id', async (req, res) => {
     if (phone !== undefined) updateData.phone = phone;
     if (gender !== undefined) updateData.gender = gender;
     if (notes !== undefined) updateData.notes = notes;
+    if (age !== undefined) updateData.age = age;
     if (firstTreatmentDate !== undefined) updateData.first_treatment_date = firstTreatmentDate;
     if (treatment2Date !== undefined) updateData.second_treatment_date = treatment2Date;
     if (treatment3Date !== undefined) updateData.third_treatment_date = treatment3Date;
@@ -599,6 +601,7 @@ router.put('/:patientId/steps/:stepId', async (req, res) => {
     if (completed_date !== undefined) updateData.completed_date = completed_date;
     if (scheduled_date !== undefined) updateData.scheduled_date = scheduled_date;
     if (notes !== undefined) updateData.notes = notes;
+    if (age !== undefined) updateData.age = age;
 
     const { data: step, error } = await client
       .from('followup_steps').update(updateData).eq('id', parseInt(stepId)).select().single();
