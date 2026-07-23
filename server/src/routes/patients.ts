@@ -516,16 +516,16 @@ router.put('/:id', async (req, res) => {
       .from('patients').update(updateData).eq('id', parseInt(id)).select().single();
     if (error) throw new Error(`更新失败：${error.message}`);
 
-    // 检查是否需要生成随诊计划（日期从无到有）
-    const hadDatesBefore = currentPatient.first_treatment_date || currentPatient.second_treatment_date || currentPatient.third_treatment_date || currentPatient.photo_date;
-    const hasDatesNow = firstTreatmentDate || treatment2Date || treatment3Date || photoDate;
+    // 检查是否需要重新生成随诊计划（任何日期修改都重新生成）
+    const datesChanged = firstTreatmentDate !== undefined || treatment2Date !== undefined || treatment3Date !== undefined || photoDate !== undefined;
 
-    if (!hadDatesBefore && hasDatesNow) {
-      // 之前没有日期，现在有日期了，需要生成随诊计划
+    if (datesChanged) {
+      // 删除旧的随诊计划
       const { error: stepsError } = await client
         .from('followup_steps').delete().eq('patient_id', parseInt(id));
       if (stepsError) throw new Error(`删除旧步骤失败：${stepsError.message}`);
 
+      // 重新生成随诊计划
       const treatmentDates = [
         { date: firstTreatmentDate, type: '首次治疗' },
         { date: treatment2Date, type: '二次治疗' },
@@ -538,6 +538,7 @@ router.put('/:id', async (req, res) => {
           .from('followup_steps').insert(generateFollowupSteps(parseInt(id), treatmentDates));
         if (insertError) throw new Error(`生成步骤失败：${insertError.message}`);
       }
+    }
     }
 
     res.json(patient);
