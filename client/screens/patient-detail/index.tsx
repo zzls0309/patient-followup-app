@@ -188,8 +188,11 @@ function DatePickerModal({
   useEffect(() => {
     if (visible) {
       const now = getToday();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setYear(now.getFullYear());
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMonth(now.getMonth() + 1);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDay(now.getDate());
     }
   }, [visible]);
