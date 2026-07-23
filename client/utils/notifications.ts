@@ -133,10 +133,11 @@ export async function scheduleDailyReminder(hour: number, minute: number): Promi
 
   const notificationId = await Notifications.scheduleNotificationAsync({
     content: {
-      title: '随访提醒',
-      body: '您有待处理的随诊任务，请打开应用查看。',
+      title: '随诊提醒',
+      body: '未来三日无随诊计划，点击查看详情',
       sound: true,
       priority: Notifications.AndroidNotificationPriority.HIGH,
+      data: { url: '/patients' },
     },
     trigger: {
       type: 'daily' as any,

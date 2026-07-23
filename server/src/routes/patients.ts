@@ -805,7 +805,7 @@ async function sendPushNotifications(
 // 手动触发推送通知（用于测试）
 router.post('/push/send-test', async (_req, res) => {
   try {
-    await sendPushNotifications('随访提醒测试', '这是一条测试通知，推送功能正常工作！');
+    await sendPushNotifications('随诊提醒', '未来三日无随诊计划，点击查看详情', { url: '/patients' });
     res.json({ success: true, message: '测试通知已发送' });
   } catch (err) {
     console.error('Error sending test notification:', err);
@@ -813,17 +813,24 @@ router.post('/push/send-test', async (_req, res) => {
   }
 });
 
-// 检查当日随诊并发送提醒（可由定时任务调用）
+// 检查未来三日随诊并发送提醒（可由定时任务调用）
 router.post('/push/check-and-remind', async (_req, res) => {
   try {
     const supabase = getSupabaseClient();
     const today = getTodayBJ();
     
-    // 查询当日有待随诊的患者
-    const { data: todaySteps, error } = await supabase
+    // 计算未来三日的日期范围
+    const todayDate = new Date(today);
+    const threeDaysLater = new Date(todayDate);
+    threeDaysLater.setDate(todayDate.getDate() + 2); // 今天 + 2 天 = 未来三日
+    const threeDaysLaterStr = formatDateBJ(threeDaysLater);
+    
+    // 查询未来三日有待随诊的患者
+    const { data: upcomingSteps, error } = await supabase
       .from('followup_steps')
       .select('patient_id, step_number, scheduled_date')
-      .eq('scheduled_date', today)
+      .gte('scheduled_date', today)
+      .lte('scheduled_date', threeDaysLaterStr)
       .is('completed_date', null)
       .order('scheduled_date', { ascending: true });
 
@@ -832,8 +839,8 @@ router.post('/push/check-and-remind', async (_req, res) => {
     // 获取患者信息
     let patientNames: string[] = [];
     
-    if (todaySteps && todaySteps.length > 0) {
-      const patientIds = [...new Set(todaySteps.map((s) => s.patient_id))];
+    if (upcomingSteps && upcomingSteps.length > 0) {
+      const patientIds = [...new Set(upcomingSteps.map((s) => s.patient_id))];
       const { data: patients } = await supabase
         .from('patients')
         .select('id, name')
@@ -850,7 +857,7 @@ router.post('/push/check-and-remind', async (_req, res) => {
       };
       
       const nameSet = new Set<string>();
-      for (const step of todaySteps) {
+      for (const step of upcomingSteps) {
         const patientName = patientMap.get(step.patient_id) || '未知';
         const stepLabel = stepLabels[String(step.step_number)] || `步骤${step.step_number}`;
         nameSet.add(`${patientName}(${stepLabel})`);
@@ -863,13 +870,13 @@ router.post('/push/check-and-remind', async (_req, res) => {
     let body: string;
 
     if (patientNames.length === 0) {
-      // 当日没有患者需要随诊
+      // 未来三日没有患者需要随诊
       title = '随诊提醒';
-      body = '今日无随诊计划，点击查看详情';
+      body = '未来三日无随诊计划，点击查看详情';
     } else {
       // 有患者需要随诊
-      title = `随诊提醒 (${patientNames.length}人)`;
-      body = `今日待随诊患者：\n${patientNames.join('、')}`;
+      title = '随诊提醒';
+      body = `未来三日计划随诊名单：\n${patientNames.join('、')}`;
     }
 
     // 发送通知，带深度链接
