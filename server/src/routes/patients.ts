@@ -829,7 +829,7 @@ router.post('/push/check-and-remind', async (_req, res) => {
     if (patientNames.length === 0) {
       // 当日没有患者需要随诊
       title = '随诊提醒';
-      body = '当日没有患者需要随诊';
+      body = '今日无随诊计划，点击查看详情';
     } else {
       // 有患者需要随诊
       title = `随诊提醒 (${patientNames.length}人)`;
