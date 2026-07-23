@@ -175,7 +175,10 @@ export default function AddPatientScreen() {
           </View>
 
           <View style={styles.fieldCard}>
-            <Text style={styles.fieldLabel}>第一次治疗日期</Text>
+            <View style={styles.fieldLabelRow}>
+              <Text style={styles.fieldLabel}>第一次治疗日期</Text>
+              <Text style={styles.optionalBadge}>选填</Text>
+            </View>
             <TextInput
               style={styles.fieldInput}
               placeholder={`YYYY.MM.DD，例如：${getTomorrowDate()}`}
