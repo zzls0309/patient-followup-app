@@ -469,9 +469,33 @@ export default function PatientDetailScreen() {
     ]);
   };
 
-  const handleEditSuccess = () => {
-    setEditModalVisible(false);
-    fetchPatient();
+  const handleEditSuccess = async (data: {
+    name: string;
+    phone: string;
+    gender: string;
+    age: number;
+    notes: string;
+    firstTreatmentDate?: string;
+  }) => {
+    try {
+      const response = await fetch(`${API_BASE}/patients/${patientId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          phone: data.phone,
+          gender: data.gender,
+          age: data.age,
+          notes: data.notes,
+          ...(data.firstTreatmentDate ? { first_treatment_date: data.firstTreatmentDate } : {}),
+        }),
+      });
+      if (!response.ok) throw new Error('保存失败');
+      setEditModalVisible(false);
+      fetchPatient();
+    } catch (err) {
+      Alert.alert('错误', '保存失败，请重试');
+    }
   };
 
   if (loading) {
