@@ -58,18 +58,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
   // 如果未授权，请求权限
   if (existingStatus !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync({
-      ios: {
-        allowAlert: true,
-        allowBadge: true,
-        allowSound: true,
-      },
-      android: {
-        allowAlert: true,
-        allowBadge: true,
-        allowSound: true,
-      },
-    });
+    const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }
 
