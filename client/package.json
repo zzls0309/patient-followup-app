@@ -1,6 +1,6 @@
 {
-  "name": "expo-app",
-  "description": "my-expo-app",
+  "name": "随访助手",
+  "description": "patient followup management app",
   "main": "expo-router/entry",
   "private": true,
   "scripts": {
