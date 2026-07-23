@@ -493,17 +493,53 @@ router.put('/:id', async (req, res) => {
   try {
     const client = getSupabaseClient();
     const { id } = req.params;
-    const { name, phone, gender, age, notes } = req.body;
+    const { name, phone, gender, age, notes, firstTreatmentDate, treatment2Date, treatment3Date, photoDate } = req.body;
+
+    // 获取当前患者信息
+    const { data: currentPatient, error: fetchError } = await client
+      .from('patients').select('*').eq('id', parseInt(id)).single();
+    if (fetchError) throw new Error(`获取患者失败：${fetchError.message}`);
+
+    // 构建更新数据
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (name !== undefined) updateData.name = name;
     if (phone !== undefined) updateData.phone = phone;
     if (gender !== undefined) updateData.gender = gender;
     if (age !== undefined) updateData.age = age;
     if (notes !== undefined) updateData.notes = notes;
+    if (firstTreatmentDate !== undefined) updateData.first_treatment_date = firstTreatmentDate;
+    if (treatment2Date !== undefined) updateData.second_treatment_date = treatment2Date;
+    if (treatment3Date !== undefined) updateData.third_treatment_date = treatment3Date;
+    if (photoDate !== undefined) updateData.photo_date = photoDate;
 
     const { data: patient, error } = await client
       .from('patients').update(updateData).eq('id', parseInt(id)).select().single();
-    if (error) throw new Error(`更新失败: ${error.message}`);
+    if (error) throw new Error(`更新失败：${error.message}`);
+
+    // 检查是否需要生成随诊计划（日期从无到有）
+    const hadDatesBefore = currentPatient.first_treatment_date || currentPatient.second_treatment_date || currentPatient.third_treatment_date || currentPatient.photo_date;
+    const hasDatesNow = firstTreatmentDate || treatment2Date || treatment3Date || photoDate;
+
+    if (!hadDatesBefore && hasDatesNow) {
+      // 之前没有日期，现在有日期了，需要生成随诊计划
+      const { error: stepsError } = await client
+        .from('followup_steps').delete().eq('patient_id', parseInt(id));
+      if (stepsError) throw new Error(`删除旧步骤失败：${stepsError.message}`);
+
+      const treatmentDates = [
+        { date: firstTreatmentDate, type: '首次治疗' },
+        { date: treatment2Date, type: '二次治疗' },
+        { date: treatment3Date, type: '三次治疗' },
+        { date: photoDate, type: '拍照' },
+      ].filter(t => t.date);
+
+      if (treatmentDates.length > 0) {
+        const { error: insertError } = await client
+          .from('followup_steps').insert(generateFollowupSteps(parseInt(id), treatmentDates));
+        if (insertError) throw new Error(`生成步骤失败：${insertError.message}`);
+      }
+    }
+
     res.json(patient);
   } catch (err) {
     console.error('Error updating patient:', err);
