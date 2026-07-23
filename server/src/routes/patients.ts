@@ -304,7 +304,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
         }
 
         // 找到最后完成的日期
-        const lastCompletedDate = completedDates[completedDates.length - 1].completed_date;
+        const lastCompletedDate = completedDates.length > 0 ? completedDates[completedDates.length - 1].completed_date : null;
         const allCompleted = completedDates.length >= 4;
 
         // 生成步骤
