@@ -11,7 +11,7 @@ const upload = multer({
 
 // 步骤类型配置
 const STEP_TYPES = ['treatment_1', 'treatment_2', 'treatment_3', 'photo'] as const;
-const STEP_INTERVAL_DAYS = 28;
+const STEP_INTERVAL_DAYS = 30;
 
 // 北京时间获取今天的日期字符串 (YYYY-MM-DD)
 function getTodayBJ(): string {
