@@ -777,87 +777,64 @@ router.post('/push/send-test', async (_req, res) => {
   }
 });
 
-// 检查未来3天随诊并发送提醒（可由定时任务调用）
+// 检查当日随诊并发送提醒（可由定时任务调用）
 router.post('/push/check-and-remind', async (_req, res) => {
   try {
     const supabase = getSupabaseClient();
     const today = getTodayBJ();
     
-    // 计算未来3天的日期范围
-    const todayDate = new Date(today + 'T00:00:00+08:00');
-    const futureDates: string[] = [];
-    for (let i = 0; i < 3; i++) {
-      const d = new Date(todayDate);
-      d.setDate(d.getDate() + i);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      futureDates.push(`${year}-${month}-${day}`);
-    }
-
-    // 查询未来3天有待随诊的患者
-    const { data: upcomingSteps, error } = await supabase
+    // 查询当日有待随诊的患者
+    const { data: todaySteps, error } = await supabase
       .from('followup_steps')
       .select('patient_id, step_number, scheduled_date')
-      .in('scheduled_date', futureDates)
+      .eq('scheduled_date', today)
       .is('completed_date', null)
       .order('scheduled_date', { ascending: true });
 
     if (error) throw error;
 
-    if (!upcomingSteps || upcomingSteps.length === 0) {
-      res.json({ success: true, message: '未来3天没有待随诊的患者', count: 0 });
-      return;
-    }
-
     // 获取患者信息
-    const patientIds = [...new Set(upcomingSteps.map((s) => s.patient_id))];
-    const { data: patients } = await supabase
-      .from('patients')
-      .select('id, name')
-      .in('id', patientIds);
+    let patientNames: string[] = [];
+    
+    if (todaySteps && todaySteps.length > 0) {
+      const patientIds = [...new Set(todaySteps.map((s) => s.patient_id))];
+      const { data: patients } = await supabase
+        .from('patients')
+        .select('id, name')
+        .in('id', patientIds);
 
-    const patientMap = new Map(patients?.map((p) => [p.id, p.name]) || []);
-    
-    // 按日期分组
-    const stepLabels: Record<string, string> = {
-      '1': '首次',
-      '2': '二次',
-      '3': '三次',
-      '4': '拍照',
-    };
-    
-    const dateGroups: Record<string, string[]> = {};
-    for (const step of upcomingSteps) {
-      const date = step.scheduled_date;
-      if (!dateGroups[date]) dateGroups[date] = [];
-      const patientName = patientMap.get(step.patient_id) || '未知';
-      const stepLabel = stepLabels[String(step.step_number)] || `步骤${step.step_number}`;
-      dateGroups[date].push(`${patientName}(${stepLabel})`);
+      const patientMap = new Map(patients?.map((p) => [p.id, p.name]) || []);
+      
+      // 构建患者名单
+      const stepLabels: Record<string, string> = {
+        '1': '首次治疗',
+        '2': '二次治疗',
+        '3': '三次治疗',
+        '4': '拍照',
+      };
+      
+      const nameSet = new Set<string>();
+      for (const step of todaySteps) {
+        const patientName = patientMap.get(step.patient_id) || '未知';
+        const stepLabel = stepLabels[String(step.step_number)] || `步骤${step.step_number}`;
+        nameSet.add(`${patientName}(${stepLabel})`);
+      }
+      patientNames = Array.from(nameSet);
     }
 
     // 构建通知内容
-    const dateLabels: Record<string, string> = {};
-    for (let i = 0; i < 3; i++) {
-      const d = new Date(todayDate);
-      d.setDate(d.getDate() + i);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const key = `${year}-${month}-${day}`;
-      if (i === 0) dateLabels[key] = '今天';
-      else if (i === 1) dateLabels[key] = '明天';
-      else dateLabels[key] = '后天';
-    }
+    let title: string;
+    let body: string;
 
-    const lines: string[] = [];
-    for (const [date, items] of Object.entries(dateGroups)) {
-      const label = dateLabels[date] || date.slice(5);
-      lines.push(`${label}: ${items.join('、')}`);
+    if (patientNames.length === 0) {
+      // 当日没有患者需要随诊
+      title = '随诊提醒';
+      body = '当日没有患者需要随诊';
+    } else {
+      // 有患者需要随诊
+      title = `随诊提醒 (${patientNames.length}人)`;
+      body = `今日待随诊患者：\n${patientNames.join('、')}`;
     }
-
-    const title = `随诊提醒 (${upcomingSteps.length}人)`;
-    const body = lines.join('\n');
 
     // 发送通知，带深度链接
     await sendPushNotifications(title, body, { url: '/patients' });
@@ -868,7 +845,12 @@ router.post('/push/check-and-remind', async (_req, res) => {
       .update({ last_notified_date: today })
       .eq('reminder_enabled', true);
 
-    res.json({ success: true, message: '提醒已发送', count: upcomingSteps.length });
+    res.json({ 
+      success: true, 
+      message: '提醒已发送', 
+      count: patientNames.length,
+      patients: patientNames 
+    });
   } catch (err) {
     console.error('Error checking and reminding:', err);
     res.status(500).json({ error: '检查并提醒失败' });
