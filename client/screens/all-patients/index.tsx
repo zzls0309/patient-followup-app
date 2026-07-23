@@ -231,13 +231,22 @@ export default function AllPatientsScreen() {
               下次随访：{new Date(item.next_step_date).toLocaleDateString('zh-CN')}
             </Text>
           </View>
-        ) : completed >= total ? (
+        ) : completed >= total && total > 0 ? (
           <View style={styles.nextStepRow}>
             <View style={[styles.nextStepIconWrap, { backgroundColor: '#E8F5E9' }]}>
               <FontAwesome6 name="circle-check" size={13} color="#059669" />
             </View>
             <Text style={[styles.nextStepText, { color: '#059669', fontWeight: '600' }]}>
               全部随访已完成
+            </Text>
+          </View>
+        ) : completed === 0 && total === 0 ? (
+          <View style={styles.nextStepRow}>
+            <View style={[styles.nextStepIconWrap, { backgroundColor: '#F3F4F6' }]}>
+              <FontAwesome6 name="clock" size={13} color="#9CA3AF" />
+            </View>
+            <Text style={[styles.nextStepText, { color: '#9CA3AF' }]}>
+              未开始治疗
             </Text>
           </View>
         ) : null}
