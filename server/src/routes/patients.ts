@@ -538,7 +538,6 @@ router.put('/:id', async (req, res) => {
         if (insertError) throw new Error(`生成步骤失败：${insertError.message}`);
       }
     }
-    }
 
     res.json(patient);
   } catch (err) {
