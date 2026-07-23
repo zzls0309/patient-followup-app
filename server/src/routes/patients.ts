@@ -243,7 +243,6 @@ router.post('/import', upload.single('file'), async (req, res) => {
       const name = String(row['姓名'] || row['name'] || '').trim();
       const phone = String(row['电话'] || row['手机'] || row['phone'] || '').trim();
       const gender = String(row['性别'] || row['gender'] || '').trim();
-      const age = parseInt(String(row['年龄'] || row['age'] || '0'));
       const notes = String(row['备注'] || row['notes'] || '').trim();
       const firstDate = String(row['首次治疗日期'] || row['firstTreatmentDate'] || row['首次治疗'] || '').trim();
       const secondDate = String(row['二次治疗日期'] || row['secondTreatmentDate'] || row['二次治疗'] || '').trim();
