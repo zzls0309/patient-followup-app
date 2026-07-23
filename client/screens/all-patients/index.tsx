@@ -164,7 +164,7 @@ export default function AllPatientsScreen() {
     const total = parseInt(item.total_steps);
     const progress = total > 0 ? completed / total : 0;
     const daysUntil = getDaysUntil(item.next_step_date);
-    const status = getStatusInfo(daysUntil, item.completed_steps || 0);
+    const status = getStatusInfo(daysUntil, completed);
     const isSelected = selectedIds.has(item.id);
 
     return (
