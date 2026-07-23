@@ -385,7 +385,7 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/v1/patients - 创建患者
 router.post('/', async (req, res) => {
-  const { name, phone, gender, age, notes, firstTreatmentDate, treatment2Date, treatment3Date, photoDate } = req.body;
+  const { name, phone, gender, notes, firstTreatmentDate, treatment2Date, treatment3Date, photoDate } = req.body;
   if (!name) {
     return res.status(400).json({ error: 'Name is required' });
   }
@@ -492,7 +492,7 @@ router.put('/:id', async (req, res) => {
   try {
     const client = getSupabaseClient();
     const { id } = req.params;
-    const { name, phone, gender, age, notes, firstTreatmentDate, treatment2Date, treatment3Date, photoDate } = req.body;
+    const { name, phone, gender, notes, firstTreatmentDate, treatment2Date, treatment3Date, photoDate } = req.body;
 
     // 获取当前患者信息
     const { data: currentPatient, error: fetchError } = await client
@@ -504,7 +504,6 @@ router.put('/:id', async (req, res) => {
     if (name !== undefined) updateData.name = name;
     if (phone !== undefined) updateData.phone = phone;
     if (gender !== undefined) updateData.gender = gender;
-    if (age !== undefined) updateData.age = age;
     if (notes !== undefined) updateData.notes = notes;
     if (firstTreatmentDate !== undefined) updateData.first_treatment_date = firstTreatmentDate;
     if (treatment2Date !== undefined) updateData.second_treatment_date = treatment2Date;
