@@ -399,73 +399,51 @@ router.post('/', async (req, res) => {
       return res.json({ ...patient, steps: [] });
     }
 
-    // 生成4个步骤的计划日期
-    const stepDates = normalizedFirstDate ? generateStepDates(normalizedFirstDate) : [];
-    const today = getTodayBJ();
-
-    // 标记已提供日期的步骤为已完成
+    // 收集所有已完成的日期
     const completedDates: Record<number, string> = {};
     if (normalizedFirstDate) completedDates[1] = normalizedFirstDate;
     if (normalizedT2Date) completedDates[2] = normalizedT2Date;
     if (normalizedT3Date) completedDates[3] = normalizedT3Date;
     if (normalizedPhotoDate) completedDates[4] = normalizedPhotoDate;
 
-    const stepsToInsert = stepDates.map(s => ({
-      patient_id: patient.id,
-      step_number: s.step_number,
-      step_type: s.step_type,
-      scheduled_date: s.scheduled_date,
-      completed_date: completedDates[s.step_number] || null,
-    }));
-
-    const { error: stepsError } = await client.from('followup_steps').insert(stepsToInsert);
-    if (stepsError) throw new Error(`创建步骤失败: ${stepsError.message}`);
-
-    // 如果有已完成的步骤，根据最后一个完成日期推算并创建下一次随诊
     const completedStepNumbers = Object.keys(completedDates).map(Number).sort((a, b) => a - b);
-    if (completedStepNumbers.length > 0 && completedStepNumbers.length < 4) {
-      // 找到最后一个完成的步骤
+    const today = getTodayBJ();
+
+    // 根据最后完成的日期生成后续步骤
+    const stepsToInsert = [];
+    if (completedStepNumbers.length > 0) {
       const lastCompletedStepNum = completedStepNumbers[completedStepNumbers.length - 1];
       const lastCompletedDate = completedDates[lastCompletedStepNum];
       const lastCompletedBase = parseDateBJ(lastCompletedDate);
 
-      // 计算需要创建的后续步骤
-      const newSteps = [];
+      // 添加已完成的步骤
+      for (const stepNum of completedStepNumbers) {
+        stepsToInsert.push({
+          patient_id: patient.id,
+          step_number: stepNum,
+          step_type: STEP_TYPES[stepNum - 1],
+          scheduled_date: completedDates[stepNum],
+          completed_date: completedDates[stepNum],
+        });
+      }
+
+      // 生成后续未完成的步骤
       for (let i = lastCompletedStepNum + 1; i <= 4; i++) {
         const d = new Date(lastCompletedBase);
         d.setDate(lastCompletedBase.getDate() + (i - lastCompletedStepNum) * STEP_INTERVAL_DAYS);
-        newSteps.push({
+        stepsToInsert.push({
           patient_id: patient.id,
           step_number: i,
           step_type: STEP_TYPES[i - 1],
           scheduled_date: formatDateBJ(d),
+          completed_date: null,
         });
       }
+    }
 
-      if (newSteps.length > 0) {
-        // 删除之前自动生成的步骤，替换为基于实际完成日期推算的步骤
-        await client.from('followup_steps').delete()
-          .eq('patient_id', patient.id)
-          .gt('step_number', lastCompletedStepNum);
-        const { error: newStepsError } = await client.from('followup_steps').insert(newSteps);
-        if (newStepsError) throw new Error(`创建后续步骤失败: ${newStepsError.message}`);
-      }
-    } else if (completedStepNumbers.length === 4) {
-      // 所有步骤都已完成，创建新的随访周期（从第5步开始）
-      const lastCompletedDate = completedDates[4];
-      const lastCompletedBase = parseDateBJ(lastCompletedDate);
-      const newSteps = STEP_TYPES.map((stepType, i) => {
-        const d = new Date(lastCompletedBase);
-        d.setDate(lastCompletedBase.getDate() + (i + 1) * STEP_INTERVAL_DAYS);
-        return {
-          patient_id: patient.id,
-          step_number: 5 + i,
-          step_type: stepType,
-          scheduled_date: formatDateBJ(d),
-        };
-      });
-      const { error: newStepsError } = await client.from('followup_steps').insert(newSteps);
-      if (newStepsError) throw new Error(`创建新周期步骤失败: ${newStepsError.message}`);
+    if (stepsToInsert.length > 0) {
+      const { error: stepsError } = await client.from('followup_steps').insert(stepsToInsert);
+      if (stepsError) throw new Error(`创建步骤失败：${stepsError.message}`);
     }
 
     const { data: steps } = await client.from('followup_steps').select('*')
