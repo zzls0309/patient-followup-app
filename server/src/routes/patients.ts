@@ -278,13 +278,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
       const parsedThirdDate = parseDate(thirdDate);
       const parsedPhotoDate = parseDate(photoDate);
 
-      // 至少需要一个日期
-      if (!parsedFirstDate && !parsedSecondDate && !parsedThirdDate && !parsedPhotoDate) {
-        results.failed++;
-        results.errors.push(`第${rowNum}行(${name})：至少需要填写一个治疗日期`);
-        continue;
-      }
-
+      // 允许只填写姓名，不强制要求日期
       try {
         // 创建患者
         const { data: patient, error: patientError } = await client
