@@ -1,0 +1,109 @@
+起始容器
+> expo-express-monorepo@0.0.0 start /app
+> bash。cozeproj/scripts/prod_run.sh
+[信息] 开始执行：PNPM 运行开始（服务器）
+> server@ 启动 /app/server
+> NODE_ENV=production PORT=${PORT：-5000} node dist/index.js
+Cron 职位排班：0 8 * * *（亚洲/上海）
+服务器监听时 http://localhost:8080/
+[dotenv@17.2.3] 从 .env 注入 env （0） ——提示：🔑在秘密中添加访问控制：https://dotenvx.com/ops
+[报告]报告客户端未配置：COZE_INTEGRATION_BASE_URL，COZE_WORKLOAD_IDENTITY_API_KEY缺失
+获取患者错误：错误：查询失败：在模式缓存中找不到表 'public.patients'
+在 file:///app/server/dist/index.js:162:30
+at process.processTicksAndRejections （nodenal/process/task_queues：103：5）
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+获取患者错误：错误：查询失败：在模式缓存中找不到表 'public.patients'
+在 file:///app/server/dist/index.js:162:30
+at process.processTicksAndRejections （nodenal/process/task_queues：103：5）
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了两个条目的。
+健康检查成功
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了两个条目的。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了3条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了25条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了3条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了3条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了两个条目的。
+健康检查成功
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了3条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+健康检查成功
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了两个条目的。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了两个条目的。
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 2 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 2 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 26 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 29 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 25 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 4 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 26 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 1 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 3 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 27 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 70 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 24 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 1 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 26 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 50 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 26 entries.
+[report] batchReport skipped: ReportClient is not configured. Set COZE_INTEGRATION_BASE_URL and COZE_WORKLOAD_IDENTITY_API_KEY environment variables. Dropping 1 entries.
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了26条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了两个条目的。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了24条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了3条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了25条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了26条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了两个条目的。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了3条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了26条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了两个条目的。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了25条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+创建患者错误：错误：创建患者失败：在模式缓存中找不到“patients”的“age”列
+在 file:///app/server/dist/index.js:423:29
+at process.processTicksAndRejections （nodenal/process/task_queues：103：5）
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了10条。
+创建患者错误：错误：创建患者失败：在模式缓存中找不到“patients”的“age”列
+在 file:///app/server/dist/index.js:423:29
+at process.processTicksAndRejections （nodenal/process/task_queues：103：5）
+创建患者错误：错误：创建患者失败：在模式缓存中找不到“patients”的“age”列
+在 file:///app/server/dist/index.js:423:29
+at process.processTicksAndRejections （nodenal/process/task_queues：103：5）
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了3条。
+创建患者错误：错误：创建患者失败：在模式缓存中找不到“patients”的“age”列
+在 file:///app/server/dist/index.js:423:29
+at process.processTicksAndRejections （nodenal/process/task_queues：103：5）
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了6条。
+注册推送令牌错误： {
+代码：“PGRST204”，
+详情：null，
+提示：无效，
+消息：“在模式缓存中找不到'device_push_tokens'中的'device_id'列”
+}
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了两个条目的。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。共删减了27条。
+健康检查成功
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了两个条目的。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了两个条目的。
+健康检查成功
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了26条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了3条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了两个条目的。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了8条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了42条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了3条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减了24条。
+[report] batchReport 跳过：ReportClient 未配置。设置COZE_INTEGRATION_BASE_URL并COZE_WORKLOAD_IDENTITY_API_KEY环境变量。删减1条。
