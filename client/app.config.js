@@ -83,6 +83,12 @@ module.exports = ({ config }) => {
         },
       ],
     ],
+    extra: {
+      eas: {
+        projectId: "4961a479-7772-4f23-b688-42c5129d32f8"
+      },
+      EXPO_PUBLIC_BACKEND_BASE_URL: "https://patient-followup-app-production.up.railway.app"
+    },
     experiments: {
       typedRoutes: true,
     },
