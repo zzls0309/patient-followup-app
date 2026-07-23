@@ -598,7 +598,7 @@ export default function RemindersScreen() {
               />
             </View>
             <View style={styles.pickerHintContainer}>
-              <FontAwesome6 name="info-circle" size={12} color="#94A3B8" />
+              <FontAwesome6 name="circle-info" size={12} color="#94A3B8" />
               <Text style={styles.pickerHint}>北京时间（UTC+8）</Text>
             </View>
           </View>

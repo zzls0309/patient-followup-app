@@ -25,6 +25,10 @@ interface Patient {
   gender: string;
   age: number;
   notes: string;
+  first_treatment_date: string | null;
+  second_treatment_date: string | null;
+  third_treatment_date: string | null;
+  photo_date: string | null;
   completed_steps: string;
   total_steps: string;
   next_step_date: string | null;

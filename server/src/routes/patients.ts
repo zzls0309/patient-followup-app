@@ -50,6 +50,40 @@ function generateStepDates(firstDate: string): { step_type: string; step_number:
   });
 }
 
+// 根据多个治疗日期生成随访步骤
+function generateFollowupSteps(patientId: number, treatmentDates: { date: string; type: string }[]): { patient_id: number; step_number: number; step_type: string; scheduled_date: string; completed_date: string }[] {
+  const steps: { patient_id: number; step_number: number; step_type: string; scheduled_date: string; completed_date: string }[] = [];
+  
+  treatmentDates.forEach((t, index) => {
+    steps.push({
+      patient_id: patientId,
+      step_number: index + 1,
+      step_type: STEP_TYPES[index] || 'photo',
+      scheduled_date: t.date,
+      completed_date: t.date,
+    });
+  });
+
+  if (treatmentDates.length > 0 && treatmentDates.length < 4) {
+    const lastDate = treatmentDates[treatmentDates.length - 1].date;
+    const lastBase = parseDateBJ(lastDate);
+    
+    for (let i = treatmentDates.length + 1; i <= 4; i++) {
+      const d = new Date(lastBase);
+      d.setDate(lastBase.getDate() + (i - treatmentDates.length) * STEP_INTERVAL_DAYS);
+      steps.push({
+        patient_id: patientId,
+        step_number: i,
+        step_type: STEP_TYPES[i - 1],
+        scheduled_date: formatDateBJ(d),
+        completed_date: '',
+      });
+    }
+  }
+
+  return steps;
+}
+
 // GET /api/v1/patients - 获取所有患者列表
 router.get('/', async (_req, res) => {
   try {
@@ -324,7 +358,9 @@ router.post('/import', upload.single('file'), async (req, res) => {
         // 如果还有未完成的步骤（少于 4 次），根据最后完成的日期推算后续步骤
         if (completedDates.length > 0 && completedDates.length < 4) {
           const lastStepNumber = completedDates[completedDates.length - 1].step_number;
-          const lastCompletedBase = parseDateBJ(lastCompletedDate);
+          const lastCompletedDateStr = completedDates[completedDates.length - 1].completed_date;
+          if (!lastCompletedDateStr) continue;
+          const lastCompletedBase = parseDateBJ(lastCompletedDateStr);
           
           for (let i = lastStepNumber + 1; i <= 4; i++) {
             const d = new Date(lastCompletedBase);
@@ -571,7 +607,6 @@ router.put('/:patientId/steps/:stepId', async (req, res) => {
     if (completed_date !== undefined) updateData.completed_date = completed_date;
     if (scheduled_date !== undefined) updateData.scheduled_date = scheduled_date;
     if (notes !== undefined) updateData.notes = notes;
-    if (age !== undefined) updateData.age = age;
 
     const { data: step, error } = await client
       .from('followup_steps').update(updateData).eq('id', parseInt(stepId)).select().single();

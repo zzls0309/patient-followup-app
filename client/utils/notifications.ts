@@ -307,7 +307,9 @@ export async function getReminderSummary(): Promise<string> {
 export function setupNotificationNavigation(navigate: (url: string) => void): () => void {
   // Web 平台不支持原生通知
   if (Platform.OS === 'web') {
-    return () => {};
+    return () => {
+      // Web 平台无需清理
+    };
   }
 
   // 处理应用在前台时点击通知
