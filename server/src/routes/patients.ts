@@ -289,7 +289,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
         // 创建患者
         const { data: patient, error: patientError } = await client
           .from('patients')
-          .insert({ name, phone, gender, age: isNaN(age) ? 0 : age, notes })
+          .insert({ name, phone, gender, notes })
           .select()
           .single();
         if (patientError) throw new Error(patientError.message);
@@ -407,7 +407,7 @@ router.post('/', async (req, res) => {
   try {
     const client = getSupabaseClient();
     const { data: patient, error: patientError } = await client
-      .from('patients').insert({ name, phone: phone || '', gender: gender || '', age: age || 0, notes: notes || '' })
+      .from('patients').insert({ name, phone: phone || '', gender: gender || '', notes: notes || '' })
       .select().single();
     if (patientError) throw new Error(`创建患者失败: ${patientError.message}`);
 
