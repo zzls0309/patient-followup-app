@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cron from "node-cron";
 import patientsRouter from "./routes/patients.js";
+import { runMigrations } from "./storage/database/migrations.js";
 
 const app = express();
 const port = process.env.PORT || 9091;
@@ -41,6 +42,12 @@ cron.schedule(cronSchedule, async () => {
 
 console.log(`Cron job scheduled: ${cronSchedule} (Asia/Shanghai)`);
 
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}/`);
+// Run migrations on startup
+runMigrations().then(() => {
+  app.listen(port, () => {
+    console.log(`Server listening at http://localhost:${port}/`);
+  });
+}).catch((err) => {
+  console.error('Failed to run migrations:', err);
+  process.exit(1);
 });
