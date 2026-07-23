@@ -40,8 +40,12 @@ function getDaysUntil(dateStr: string | null): number | null {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function getStatusInfo(daysUntil: number | null) {
-  if (daysUntil === null) return { label: '已完成', color: '#059669', bg: '#E8F5E9' };
+function getStatusInfo(daysUntil: number | null, hasAnyDate: boolean = false) {
+  if (daysUntil === null) {
+    // 如果没有任何治疗日期，显示"未开始治疗"
+    if (!hasAnyDate) return { label: '未开始治疗', color: '#6B7280', bg: '#F3F4F6' };
+    return { label: '已完成', color: '#059669', bg: '#E8F5E9' };
+  }
   if (daysUntil < 0) return { label: `逾期${Math.abs(daysUntil)}天`, color: '#DC2626', bg: '#FEE2E2' };
   if (daysUntil === 0) return { label: '今天', color: '#D97706', bg: '#FEF3C7' };
   if (daysUntil <= 3) return { label: `${daysUntil}天后`, color: '#D97706', bg: '#FEF3C7' };
@@ -128,7 +132,9 @@ export default function PatientsScreen() {
     const total = parseInt(item.total_steps);
     const progress = total > 0 ? completed / total : 0;
     const daysUntil = getDaysUntil(item.next_step_date);
-    const status = getStatusInfo(daysUntil);
+    // 判断是否有任何治疗日期
+    const hasAnyDate = item.first_treatment_date || item.second_treatment_date || item.third_treatment_date || item.photo_date;
+    const status = getStatusInfo(daysUntil, !!hasAnyDate);
 
     return (
       <TouchableOpacity
