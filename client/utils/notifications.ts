@@ -9,6 +9,20 @@ const REMINDER_TIME_KEY = 'reminder_time';
 
 const EXPO_PUBLIC_BACKEND_BASE_URL = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
 
+// 配置通知渠道（Android）
+if (Platform.OS === 'android') {
+  Notifications.setNotificationChannelAsync('followup-reminders', {
+    name: '随访提醒',
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#059669',
+    sound: 'default',
+    enableVibrate: true,
+    showBadge: true,
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+  });
+}
+
 // 配置通知处理器 - 控制应用在前台时的通知行为
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -135,14 +149,16 @@ export async function scheduleDailyReminder(hour: number, minute: number): Promi
     content: {
       title: '随诊提醒',
       body: '未来三日无随诊计划，点击查看详情',
-      sound: true,
-      priority: Notifications.AndroidNotificationPriority.HIGH,
+      sound: 'default',
+      priority: Notifications.AndroidNotificationPriority.MAX,
+      vibrate: [0, 250, 250, 250],
       data: { url: '/patients' },
     },
     trigger: {
       type: 'daily' as any,
       hour,
       minute,
+      channelId: 'followup-reminders',
     },
   });
 
